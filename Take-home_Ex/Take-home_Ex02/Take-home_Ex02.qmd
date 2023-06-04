@@ -29,7 +29,7 @@ FishEye knows from past experience that companies caught fishing illegally will 
 ## Installing and launching R packages
 
 ```{r}
-pacman::p_load(jsonlite, tidygraph, ggraph, visNetwork, lubridate, tidyverse, visNetwork,heatmaply,dply,ggplot2,gridExtra)
+pacman::p_load(jsonlite, tidygraph, ggraph, visNetwork, lubridate, tidyverse, visNetwork,heatmaply,dply,ggplot2,ggpubr,RColorBrewer, igraph)
 ```
 
 ## Import data
@@ -91,7 +91,7 @@ glimpse(MC2_edges)
 ```
 
 | **Col name**      | Description                                                                                                           |
-|-------------------|-----------------------------------------------------------------------------------------------------------------------|
+|-----------------|-------------------------------------------------------|
 | arrival_date/Year | Date/Year the shipment arrived at port                                                                                |
 | hscode            | Harmonized System code (commodity code) for the shipment                                                              |
 | weightkg          | The weight of the shipment in kilograms                                                                               |
@@ -168,9 +168,81 @@ g2 <- ggplot(MC2_node_abno, aes(Year,source)) +
   theme(axis.text.y = element_text(size = 7))+
   labs(title = "Irregular pattern by Out Degree")
 
-arranged_plots <- grid.arrange(g1, g2, nrow = 2)
+ggarrange(g1, g2, nrow = 2)
 ```
 
 We can observe these companies experienced a peak in the weight of shipments during the years 2028 and 2029. However, there is a substantial gap in their shipment records for several years, and shipments resumed with a significantly lower number of shipments per year.
 
 Furthermore, when examining the number of companies these companies ship out to, it becomes evident that both Omo River and Ocean Explorers have experienced a significant drop in the number of outbound connections to other companies. On the other hand, the remaining companies generally have less than five outbound connections each.
+
+## Pattern by Year
+
+-   Filter edges that include the above companies either in target or source, to see the business pattern of these companies.
+
+-   Filter node data to ensure that the nodes include only the source and target values in MC2_edge_irregular .
+
+```{r}
+MC2_edge_irregular <- MC2_edges %>% 
+  filter(source %in% MC2_node_abnor$source | target %in% MC2_node_abnor$source) %>% 
+  group_by(source,target,Year,hscode) %>% 
+  summarise(Weight = n(),.groups = "drop") %>% 
+  rename(from = source) %>%
+  rename(to = target) 
+
+id1 <- MC2_edge_irregular %>%
+  select(from) %>%
+  rename(id = from)
+id2 <- MC2_edge_irregular %>%
+  select(to) %>%
+  rename(id = to)
+MC2_node_abnormal <- rbind(id1, id2) %>%
+  distinct()
+
+MC2_graph_abnormal <- tbl_graph(nodes = MC2_node_abnormal,
+                       edges = MC2_edge_irregular,
+                       directed = TRUE)
+
+MC2_graph_abnormal
+```
+
+In 2028 and 2029, the companies exhibit a dense network of interconnected relationships. However, this connectivity is disrupted from 2029, only remain connections within small clusters. We can also see that the network connection patterns are very different in each year.
+
+```{r}
+ggraph(MC2_graph_abnormal,
+       layout = "fr") +
+  geom_edge_link(aes()) +
+  geom_node_point(aes(),color = "blue", size = 1) +
+  facet_edges(~Year)+
+  labs(title = "Pattern by Year")+
+  theme(plot.title = element_text(size = 16, face = "bold"))
+```
+
+## Interconnection pattern
+
+-   Add a new column of width in edge data, which takes log to reduce the range of values, and then square the result to amplify the edges with higher weight.
+
+-   Group nodes into "irregular" that without records for several years, and "others" that have business relationships with those irregular companies.
+
+```{r}
+MC2_edge_irregular <- MC2_edge_irregular %>% 
+  mutate(width = log((Weight))^2)
+         
+nodes <- MC2_node_abnormal %>%
+  mutate(group = ifelse(id %in% MC2_node_abnor$source, "irregular", "other"))
+
+visNetwork(nodes, MC2_edge_irregular, main = "Overall Business pattern") %>%
+  visIgraphLayout(layout = "layout_with_fr") %>% 
+  visEdges(arrows = "to", 
+           smooth = list(enabled = TRUE, 
+                         type = "curvedCW")) %>%
+  visLegend() %>%
+  visGroups(groupname="irregular", color="orange") %>% 
+  visGroups(groupname="other", color="green") %>%
+    visOptions(highlightNearest = TRUE,nodesIdSelection = TRUE,
+               selectedBy="group") %>% 
+  visLayout(randomSeed = 123)%>% 
+  visInteraction(navigationButtons = TRUE) 
+
+```
+
+Although there are irregular companies that both receive and send out shipments to others, it is noteworthy that these companies exhibit higher weights in the sending out edges, which suggests their potential roles as fishers. Besides, some irregular companies send out shipments to the same receiving companies, indicating a potential pattern of collaboration among these entities.
