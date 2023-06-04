@@ -240,9 +240,7 @@ plot <- visNetwork(nodes, MC2_edge_irregular, main = "Overall Business pattern")
   visGroups(groupname="other", color="green") %>%
     visOptions(highlightNearest = TRUE,nodesIdSelection = TRUE,
                selectedBy="group") %>% 
-  visLayout(randomSeed = 123)%>% 
-  visInteraction(navigationButtons = TRUE) 
-
+  visLayout(randomSeed = 123)
 plot
 ```
 
