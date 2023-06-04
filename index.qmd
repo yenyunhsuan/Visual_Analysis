@@ -1,0 +1,7 @@
+---
+title: "Visual Analytics and Applications"
+---
+
+Welcome to Visual Analytics and Applications homepage. In this website, you will find my coursework and portfolio prepared for this course.
+
+You can find my contact information in **ABOUT ME** section.
