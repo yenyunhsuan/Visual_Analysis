@@ -8,8 +8,6 @@ format:
 editor: visual
 author: Yen Yun Hsuan
 date: "28 May 2023"
-execute: 
-  warning: false
 ---
 
 # Background
