@@ -557,7 +557,7 @@
     "href": "Take-home_Ex/Take-home_Ex02/Take-home_Ex02.html#installing-and-launching-r-packages",
     "title": "Take Home Exercise 2",
     "section": "Installing and launching R packages",
-    "text": "Installing and launching R packages\n\n\nShow the code\npacman::p_load(jsonlite, tidygraph, ggraph, visNetwork, lubridate, tidyverse, visNetwork,heatmaply,dply,ggplot2,ggpubr,RColorBrewer, igraph)"
+    "text": "Installing and launching R packages\n\n\nShow the code\npacman::p_load(jsonlite, tidygraph, ggraph, visNetwork, lubridate, tidyverse, visNetwork,heatmaply,dply,ggplot2,ggpubr,RColorBrewer, igraph,clock,graphlayouts)"
   },
   {
     "objectID": "Take-home_Ex/Take-home_Ex02/Take-home_Ex02.html#import-data",

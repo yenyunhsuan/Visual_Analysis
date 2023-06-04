@@ -29,7 +29,7 @@ FishEye knows from past experience that companies caught fishing illegally will 
 ## Installing and launching R packages
 
 ```{r}
-pacman::p_load(jsonlite, tidygraph, ggraph, visNetwork, lubridate, tidyverse, visNetwork,heatmaply,dply,ggplot2,ggpubr,RColorBrewer, igraph)
+pacman::p_load(jsonlite, tidygraph, ggraph, visNetwork, lubridate, tidyverse, visNetwork,heatmaply,dply,ggplot2,ggpubr,RColorBrewer, igraph,clock,graphlayouts)
 ```
 
 ## Import data
