@@ -1,0 +1,422 @@
+---
+title: "Hands-on_Ex03"
+---
+
+## Import package
+
+```{r,include=FALSE}
+#| echo: false
+pacman::p_load(ggiraph, plotly, 
+               patchwork, DT, tidyverse, readxl, gifski, gapminder,
+               gganimate, tidyverse)
+```
+
+# Interactive Data Visualisation
+
+## Import data
+
+```{r}
+exam_data <- read.csv("data/Exam_data.csv")
+```
+
+## Interactive graph with ggiraph,tooltip
+
+### Tooltip effect with tooltip aesthetic
+
+1.  Tooltip: show label when mouse scroll on it
+2.  histodot: dot stacks vertically
+3.  svg: Scalable Vector Graphics(adjust size so can with good resolution) for html page
+4.  ratio of 0.618 is a recommended ratio for visually pleasing
+
+```{r}
+plot <- ggplot(data=exam_data,aes(x=MATHS))+
+  geom_dotplot_interactive(aes(tooltip=ID),
+                           stackgroups=TRUE,
+                           binwidth=1,
+                           method='histodot')+
+    scale_y_continuous(NULL,breaks=NULL)
+girafe(
+  ggobj=plot,
+  width_svg = 6,
+  height_svg = 6*0.618
+)
+```
+
+### Displaying multiple information
+
+1.  Use "\$" to extract specific column from dataframe
+2.  "paste0" to concatenate string
+
+```{r}
+exam_data$tooltip <- c(paste0(
+  "Name =", exam_data$ID, "\n Class =", exam_data$CLASS
+))
+plot <- ggplot(data=exam_data,aes(x=MATHS))+
+  geom_dotplot_interactive(aes(tooltip=exam_data$tooltip),
+                           stackgroups=TRUE,
+                           binwidth=1,
+                           method='histodot')+
+    scale_y_continuous(NULL,breaks=NULL)
+
+girafe(
+  ggobj=plot,
+  width_svg = 8,
+  height_svg = 8*0.618
+)
+
+```
+
+### Customising Tooltip
+
+Use opts_tooltip() to customize interactive label s font and color
+
+```{r}
+tooltip_css <- "background-color:white;
+font-style:bold; color:blue;"
+
+plot <- ggplot(data=exam_data,aes(x=MATHS))+
+  geom_dotplot_interactive(aes(tooltip=ID),
+                           stackgroups=TRUE,
+                           binwidth=1,
+                           method="histodot")+
+  scale_y_continuous(NULL,breaks=NULL)
+
+girafe(
+  ggobj=plot,
+  width_svg = 6,
+  height_svg = 6*0.618,
+  options = list(
+    opts_tooltip(
+      css=tooltip_css))
+)
+
+```
+
+### Displaying statistics
+
+1.  accuracy: 0.01 means to round to two decimal places
+
+2.  ymax: upper limit of 90% interval of y, y: average
+
+3.  scales::number is to format value with accuracy (0.01)
+
+4.  after_stat:tooltip applied after calculating statistic values
+
+5.  fun.data: summary statistics, mean_se:calculate mean and standard error
+
+```{r}
+tooltip <- function(y,ymax,accuracy=0.001){
+  mean <- scales::number(y,accuracy=accuracy)
+  se <- scales::number(ymax-y,accuracy = accuracy)
+  paste0("Mean math scores",mean," +/- ",se)
+}
+
+gg_point <- ggplot(data=exam_data,aes(x=RACE)
+               )+
+  stat_summary(aes(y=MATHS,
+                   tooltip=after_stat(
+                     tooltip(y,ymax))),
+  fun.data="mean_se",
+  geom=GeomInteractiveCol,
+  fill="lightblue"
+    )+
+  stat_summary(aes(y=MATHS),
+  fun.data="mean_se",
+  geom="errorbar",width=0.2,size=0.2)
+
+girafe(
+  ggobj=gg_point,
+  width_svg = 8,
+  height_svg = 8*0.6188)
+```
+
+### Highlight effect
+
+data_id allows highlighting effect on dotplot with defined category, default setting is filling with orange color.
+
+```{r}
+plot <- ggplot(data=exam_data,aes(x=MATHS))+
+  geom_dotplot_interactive(aes(data_id=CLASS),
+                           stackgroups=TRUE,
+                           binwidth=1,
+                           method="histodot")+
+  scale_y_continuous(NULL,breaks=NULL)
+
+girafe(
+  ggobj=plot,
+  width_svg = 6,
+  height_svg=6*0.618
+)
+```
+
+### Changing hovering color setting
+
+opacity: changing the transparency, opacity=0.2 means with 80% transparency
+
+```{r}
+plot <- ggplot(data=exam_data,aes(x=MATHS))+
+  geom_dotplot_interactive(aes(data_id=CLASS),
+                           stackgroups=TRUE,
+                           binwidth=1,
+                           method="histodot")+
+  scale_y_continuous(NULL,breaks=NULL)
+
+girafe(
+  ggobj=plot,
+  width_svg = 6,
+  height_svg=6*0.618,
+  options = list(
+    opts_hover(css="fill: #202020;"),
+    opts_hover_inv(css="opacity:0.1;")
+    
+  )
+)
+```
+
+### Combine tooltip(label) and hovering effect
+
+```{r}
+plot <- ggplot(data=exam_data,aes(x=MATHS))+
+  geom_dotplot_interactive(
+    aes(tooltip=CLASS,data_id=CLASS),
+    stackgroups=TRUE,
+    binwidth=2,
+    method="histodot"
+  )+
+  scale_y_continuous(NULL,breaks=NULL)
+
+girafe(
+  ggobj=plot,
+  width_svg=6,
+  height_svg=6*0.618,
+  options = list(
+    opts_hover(css="fill:#202020;"),
+    opts_hover_inv(css="opacity:0.2;")
+  )
+  
+)
+```
+
+### Insert link on the graph
+
+1.  add onclick column to exam_data
+2.  sprintf: combine new string with URL
+3.  "%s%s", first %s is the link, second %s is new adding string
+4.  as.character: convert to character(string) type, and adding to URL
+
+```{r}
+exam_data$onclick <- sprintf("window.open(\"%s%s\")",
+ "https://www.moe.gov.sg/schoolfinder?journey=Primary%20school",
+ as.character(exam_data$ID))
+
+plot <- ggplot(data=exam_data,aes(x=MATHS))+
+  geom_dotplot_interactive(
+    aes(onclick=onclick),
+    stackgroups=TRUE,
+    binwidth=2,
+    method="histodot"
+  )+
+  scale_y_continuous(NULL,breaks=NULL)
+
+girafe(
+  ggobj=plot,
+  width_svg=6,
+  height_svg=6*0.618
+  
+)
+ 
+ 
+```
+
+### Coordinate multiple views
+
+1.  opts_hover: setting about hovering point
+2.  opts_hover_inv: setting for other part when hovering
+
+```{r}
+
+plot1 <- ggplot(data=exam_data,aes(x=MATHS))+
+  geom_dotplot_interactive(
+    aes(data_id=ID),
+    stackgroups=TRUE,
+    binwidth=2,
+    method="histodot"
+  )+
+  coord_cartesian(xlim=c(0,100))+
+  scale_y_continuous(NULL,breaks=NULL)
+
+plot2 <- ggplot(data=exam_data,aes(x=ENGLISH))+
+  geom_dotplot_interactive(
+    aes(data_id=ID),
+    stackgroups=TRUE,
+    binwidth=2,
+    method="histodot"
+  )+
+  coord_cartesian(xlim=c(0,100))+
+  scale_y_continuous(NULL,breaks=NULL)
+
+girafe(code = print(plot1+plot2),
+  width_svg=6,
+  height_svg=3,
+  options=list(
+    opts_hover(css="fill: #202020;"),
+    opts_hover_inv(css="opacity:0.2;")
+  
+))
+ 
+```
+
+## Interactive graphs by plotly
+
+### Interactive scatter plot
+
+```{r}
+#|message: false
+plot_ly(data = exam_data, 
+             x = ~MATHS, 
+             y = ~ENGLISH)
+```
+
+### Adding visual effect
+
+```{r}
+#| warning: false
+plot_ly(data= exam_data,
+       x= ~MATHS,
+       y= ~ENGLISH,
+       color= ~RACE)
+```
+
+### Coordinate multiple views
+
+1.  highlight_key: create shared data for two plots
+2.  subplot: coordinate two plots together
+
+```{r}
+d <- highlight_key(exam_data)
+
+p1 <- ggplot(data=d,aes(x=MATHS,y=ENGLISH))+
+  geom_point(size=2)+
+  coord_cartesian(xlim=c(0,100),ylim=c(0,100))
+
+p2 <- ggplot(data=d,aes(x=MATHS,y=SCIENCE))+
+  geom_point(size=2)+
+  coord_cartesian(xlim=c(0,100),ylim=c(0,100))
+
+subplot(ggplotly(p1),ggplotly(p2))
+```
+
+## Interactive graphs by ggplotly
+
+```{r}
+plot <- ggplot(data=exam_data,aes(x=MATHS,y=ENGLISH))+
+  geom_point(size=2)+
+  coord_cartesian(xlim=c(0,100),ylim=c(0,100))
+
+
+ggplotly(plot)
+```
+
+### Data table
+
+class="compact" means to have compact layout for the table
+
+```{r}
+DT::datatable(exam_data,class="compact")
+```
+
+## Link table with graph
+
+1.  highlight_key: assign identifier to dataframe
+
+2.  plotly_selected: track corresponding point when mouse click on table row
+
+3.  crosstalk: combine table and graph
+
+4.  bscols: create layout with two elements
+
+```{r}
+data <- highlight_key(exam_data)
+
+p <- ggplot(data,aes(ENGLISH,MATHS))+
+  geom_point(siz=1)+
+  coord_cartesian(xlim=c(0,100),ylim=c(0,100))
+
+gg <- highlight(ggplotly(p),"plotly_selected")
+
+crosstalk::bscols(gg,DT::datatable(data),widths = 5)
+```
+
+# Animated Statistical Graphics
+
+## Import data
+1. mutate_each or mutate(across())：apply given function to selected columns
+2. %>%  pass function/results to next step
+3. funs all all_of: create a list of function
+4. factor: turn column into categorical variable
+```{r}
+col <- c("Country","Continent")
+global <- read_xls("data/GlobalPopulation.xls",
+                   sheet="Data") %>% 
+  mutate(across(all_of(col), factor)) %>% 
+  mutate(Year=as.integer(Year))
+
+```
+
+## Population bubble plot
+### static plot
+
+```{r}
+ggplot(global,aes(x=Old,y=Young,size=Population,colour=Country))+
+  geom_point(alpha=0.7,show.legend = FALSE)+
+  scale_color_manual(values=country_colors)+
+  scale_size(range=c(2,10))+
+  labs(title='Year: {frame_time}', 
+       x = '% Aged', 
+       y = '% Young')
+```
+### Animated plot with gganimate
+ease_aes(): the moving way of plot element, default is linear
+```{r}
+ggplot(global,aes(x=Old,y=Young,size=Population,colour=Country))+
+  geom_point(alpha=0.7,show.legend = FALSE)+
+  scale_color_manual(values=country_colors)+
+  scale_size(range=c(2,10))+
+  labs(title='Year: {frame_time}', 
+       x = '% Aged', 
+       y = '% Young')+
+  transition_time(Year)+
+  ease_aes("linear")
+```
+
+### Animated plot with ggplotly
+
+```{r}
+plot <- ggplot(global,aes(x=Old,y=Young,size=Population,colour=Country))+
+  geom_point(aes(size=Population, frame=Year),
+             alpha=0.7,show.legend = FALSE)+
+  scale_color_manual(values=country_colors)+
+  scale_size(range=c(2,10))+
+  labs( x = '% Aged', 
+       y = '% Young')
+
+ggplotly(plot)
+```
+
+### Using plot_ly()
+
+```{r,warning=FALSE}
+bp <- global %>%
+  plot_ly(x = ~Old, 
+          y = ~Young, 
+          size = ~Population, 
+          color = ~Continent, 
+          frame = ~Year, 
+          text = ~Country, 
+          hoverinfo = "text",
+          type = 'scatter',
+          mode = 'markers'
+          )
+bp
+```
+

@@ -1,0 +1,760 @@
+---
+title: "Hands-on_Ex06"
+format: html
+editor: visual
+execute: 
+  warning: false
+---
+
+# Creating Ternary Plot with R
+
+## Data Preparation
+
+### Import package
+
+```{r}
+pacman::p_load('plotly', 'tidyverse','ggstatsplot')
+```
+
+```{r}
+require(devtools)
+```
+
+### Dowload ggtern
+
+-   [**ggtern**](http://www.ggtern.com/), a ggplot extension specially designed to plot ternary diagrams. The package will be used to plot static ternary plot
+
+```{r,include=FALSE}
+library(ggtern)
+```
+
+### Import data
+
+```{r}
+pop_data <- read_csv("data/respopagsex2000to2018_tidy.csv")
+glimpse(pop_data)
+```
+
+Derive three new measures, namely: young, active, and old
+
+```{r}
+agpop_mutated <- pop_data %>% 
+  mutate(Year = as.character(Year)) %>% 
+# use pivot_wider to seperate Unique values in AG into distinct columns, fill with corresponding Population value
+  pivot_wider(names_from = AG, values_from = Population) %>% 
+#calculate the sum of values in columns 4 to 8 (AG columns) for each row
+  mutate(YOUNG = rowSums(.[4:8])) %>% 
+  mutate(ACTIVE  = rowSums(.[9:16])) %>% 
+  mutate(OLD  = rowSums(.[17:21])) %>% 
+  mutate(TOTAL  = rowSums(.[22:24])) %>% 
+  filter(Year == 2018) %>% 
+  filter(TOTAL > 0)
+  
+head(agpop_mutated)
+```
+
+## Static graph with ggtern
+
+```{r}
+ggtern(data = agpop_mutated,aes(x= YOUNG, y = ACTIVE, z = OLD))+
+  geom_point()+
+  labs(title="Population structure, 2018") +
+  theme_rgbw()
+```
+
+## Interactive graph with plotly
+
+```{r}
+label <- function(txt) { 
+  # Defines a function named "label" that takes one argument "txt"
+  list( 
+    text = txt,
+    x = 0.1, y = 1, 
+    # Sets the x and y coordinates of the label (x:0 left, y:0 bottom)
+    xref = "papaer", yref = "paper", 
+    # Sets label reference to "paper" (whole plot area)
+    align = "center", # Sets the alignment of the label text to the center
+    font = list(family = "serif", size = 15, color = "white"),
+    # Sets the font family to "serif"
+    bgcolor = "#b3b3b3", bordercolor = "black", borderwidth = 2
+  ) #background/border color
+}
+
+axis <- function(txt){
+  list(
+    title = txt, tickformat = ".0%", tickfont = list(size = 10)
+  ) # Sets the tick format to display percentages with no decimal places
+}
+
+ternaryAxes <- list(
+  aaxis = axis("Young"), # Configures the "a" axis with the title "Young"
+  baxis = axis("Active"),
+  caxis = axis("OLD")
+)
+
+plot_ly(
+  agpop_mutated,
+  a = ~YOUNG,
+  b = ~ACTIVE,
+  c = ~OLD,
+  color = I("black"),
+  type = "scatterternary"
+) %>% 
+  layout(
+    annotations = label("Ternary Markers"),
+    ternary = ternaryAxes 
+    # Assigns the "ternaryAxes" configuration to the ternary plot
+  )
+```
+
+# Visual Correlation Analysis
+
+## Data preparation
+
+### Import package
+
+```{r}
+pacman::p_load(corrplot, ggstatsplot, tidyverse)
+```
+
+### Import data
+
+```{r}
+wine <- read_csv("data/wine_quality.csv")
+glimpse(wine)
+```
+
+## Correlation plot
+
+### Correlation matrix
+
+```{r}
+pairs(wine[,2:12])
+# selects columns 2 to 11
+```
+
+Show the lower half of the correlation matrix (a correlation matrix is symmetric)
+
+```{r}
+pairs(wine[,2:12], upper.panel = NULL)
+```
+
+Display upper half.
+
+```{r}
+pairs(wine[,2:12], lower.panel = NULL)
+```
+
+### Show correlation coefficients
+
+```{r}
+#| warning: false
+panel.cor <- function(x, y, digits=2, prefix="", cex.cor, ...) {
+  usr <- par("usr")     # Retrieves the current coordinate system from the graphics parameters
+  on.exit(par(usr))     # Sets the coordinate system back to the original after the function exits
+  par(usr = c(0, 1, 0, 1))  # Sets the coordinate system to cover the full plotting region
+  r <- abs(cor(x, y, use="complete.obs"))  # Computes the correlation coefficient between x and y
+  txt <- format(c(r, 0.123456789), digits=digits)[1]  # Formats the correlation coefficient with the desired number of digits
+  txt <- paste(prefix, txt, sep="")  # Prepends the prefix to the correlation coefficient text
+  if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)  # Determines the size of the correlation text based on its width
+  text(0.5, 0.5, txt, cex = cex.cor * (1 + r) / 2)  # Displays the correlation text in the center of the plot
+}
+
+pairs(wine[,2:12], 
+      upper.panel = panel.cor)
+
+```
+
+## Use ggcorrmat
+
+### Multiple plot
+
+```{r}
+#| fig-width: 18
+#| fig-height: 8
+grouped_ggcorrmat(
+  data = wine,
+  cor.vars = 1:11,
+  grouping.var = type,
+  type = "robust",
+  p.adjust.method = "holm",
+  plotgrid.args = list(ncol = 2),
+  ggcorrplot.args = list(outline.color = "black", 
+                         hc.order = TRUE,
+                         tl.cex = 3, #text lab size
+                         tl.srt = 45,
+                        lab_size = 1), 
+  #rotate the numerical values by 45 degree,
+  annotation.args = list(
+    tag_levels = "a",
+    title = "Correlogram for wine dataset",
+    caption = "Dataset: UCI Machine Learning"
+  )
+)
+```
+
+## Corrplot package
+
+### Compute the correlation
+
+```{r}
+wine.cor <- cor(wine[,1:11])
+```
+
+Blue colours are used to represent pair variables with positive correlation coefficients and red colours are used to represent pair variables with negative correlation coefficients. Darker colours indicate relatively stronger linear relationship between the paired variables.
+
+```{r}
+library(corrplot)
+corrplot(wine.cor)
+```
+
+### Customize the design
+
+The default is "full" which display full matrix, and circle shape.
+
+Can change by method and type.
+
+diag and tl.col are used to turn off the diagonal cells and to change the axis text label colour.
+
+```{r}
+corrplot(wine.cor,
+         method = "ellipse",
+         type = "lower",
+         diag = FALSE,
+         tl.col = "black")
+```
+
+### Mixed layout
+
+```{r}
+corrplot.mixed(wine.cor, 
+               lower = "ellipse", 
+               upper = "number",
+               number.cex=0.5,
+               tl.pos = "lt", #text labels should be positioned at the left-top corner of each cell
+               diag = "l",
+               tl.col = "black")
+```
+
+### Combining corrgram with the significant test
+
+Compute the p-values and confidence interval for each pair of variables
+
+```{r}
+wine.sig = cor.mtest(wine.cor, conf.level = 0.95)
+```
+
+```{r}
+corrplot(wine.cor,
+         method ="number",
+         type = "lower",
+         diag = FALSE,
+         number.cex=0.5,
+         tl.col = "black",
+         p.mat = wine.sig$p,
+         sig.level = 0.95)
+```
+
+### Reorder corrgram
+
+"AOE" is for the angular order of the eigenvectors.
+
+```{r}
+corrplot.mixed(wine.cor,
+               lower ="ellipse",
+               upper ="number",
+               number.cex=0.5,
+               tl.pos = "lt", #left-top corner
+               order ="AOE",
+               tl.col ="black",
+               tl.cex = 0.8) #adjust word size
+
+```
+
+Using hclust, corrplot() can draw rectangles around the corrgram based on the results of hierarchical clustering.
+
+```{r}
+corrplot(wine.cor, 
+         method = "ellipse", 
+         tl.pos = "lt",
+         tl.col = "black",
+         order="hclust",
+         hclust.method = "ward.D",
+         addrect = 3) #specific cells or regions that will be highlighted depend on the correlation matrix and the highest absolute correlation values
+```
+
+# Heatmap for Visualising and Analysing Multivariate Data
+
+<<<<<<< HEAD
+## Install packages
+
+```{r}
+pacman::p_load(seriation, dendextend, heatmaply,tidyverse)
+```
+
+## Import data
+
+```{r}
+
+```
+
+## 
+=======
+## Data preparation
+
+### Install package
+
+```{r}
+pacman::p_load(seriation, dendextend, heatmaply, tidyverse,dplyr)
+```
+
+### Import data
+
+```{r}
+wh <- read_csv("data/WHData-2018.csv")
+glimpse(wh)
+```
+
+### Turn dataframe into matrix.
+
+```{r}
+wh_matrix <- data.matrix(wh)
+row.names(wh_matrix) <- wh$Country
+```
+
+## Create heatmap
+
+The arguments Rowv=NA and Colv=NA are used to switch off the option of plotting the row and column dendrograms.
+
+```{r}
+heatmap(wh_matrix,
+Rowv = NA,
+Colv = NA)
+
+```
+
+### With dendrogram
+
+Heatmap does a reordering using clusterisation: it calculates the distance between each pair of rows and columns and try to order them by similarity.
+
+```{r}
+heatmap(wh_matrix)
+```
+
+### Normalize data
+
+Normalize the data so each columns in matrix have similar range.
+
+The code chunk below normalises the matrix column-wise.
+
+Margins argument is used to ensure that the entire x-axis labels are displayed completely and, cexRow and cexCol arguments are used to define the font size used for y-axis and x-axis labels.
+
+```{r}
+wh_heatmap <- heatmap(wh_matrix,
+                      scale = "column",
+                      cexRow = 0.6,
+                      cexCol = 0.8,
+                      margins = c(10,4))
+```
+
+## Interactive Heatmap
+
+```{r}
+heatmaply(wh_matrix[,-c(1,2,4,5)],
+          fontsize_row = 2)
+```
+
+### Data transformation
+
+**Scaling method**
+
+When all variables are came from or assumed to come from some normal distribution, then scaling (i.e.: subtract the mean and divide by the standard deviation) would bring them all close to the standard normal distribution.
+
+In such a case, each value would reflect the distance from the mean in units of standard deviation.
+
+The scale argument in heatmaply() supports column and row scaling.
+
+```{r}
+heatmaply(wh_matrix[,-c(1,2,4,5)],
+          fontsize_row = 2,
+          scale = "column")
+```
+
+**Normalising method**
+
+When variables in the data comes from possibly different (and non-normal) distributions, the normalize function can be used to bring data to the 0 to 1 scale by subtracting the minimum and dividing by the maximum of all observations.
+
+This preserves the shape of each variable's distribution while making them easily comparable on the same "scale".
+
+Different from Scaling, the normalise method is performed on the input data set i.e. wh_matrix as shown in the code chunk below.
+
+```{r}
+wh_matrix_1 = wh_matrix[, -c(1, 2, 4, 5)]
+normalized_matrix <- as.matrix(normalize(wh_matrix_1))
+heatmaply(normalize(normalized_matrix),
+          fontsize_row = 2)
+
+```
+
+**Percentising method**
+
+The values in each column will be transformed into their corresponding percentile ranks within that column
+
+```{r}
+heatmaply(percentize(wh_matrix[, -c(1, 2, 4, 5)]),
+          fontsize_row = 2)
+```
+
+### Clustering algorithm
+
+```{r}
+heatmaply(normalize(wh_matrix[, -c(1, 2, 4, 5)]),
+          fontsize_row = 2,
+          dist_method = "euclidean",
+          hclust_method = "ward.D")
+```
+
+distfun: function used to compute the distance (dissimilarity) between both rows and columns.
+
+hclustfun: function used to compute the hierarchical clustering when Rowv or Colv are not dendrograms.\
+\
+dist_method results in "euclidean" to be used here, can also be "euclidean", "maximum", "binary" or so on.
+
+hclust_method can be one of "ward.D", "ward.D2", "single", "complete", "average".
+
+### Statistical approah
+
+In order to determine the best clustering method and number of cluster the dend_expend() and find_k() functions of dendextend package will be used.\
+First, the dend_expend() will be used to determine the recommended clustering method to be used.
+
+```{r}
+# dist is to calculate the Euclidean distance matrix between the rows
+wh_d <- dist(normalize(wh_matrix[, -c(1, 2, 4, 5)]),
+             method = "euclidean")
+dend_expend(wh_d)[[3]]
+```
+
+From the table above, the output table shows that "average" method should be used because it gave the high optimum value.
+
+find_k() is used to determine the optimal number of cluster\
+
+Figure above shows that k=3 would be good.
+
+```{r}
+wh_clust <- hclust(wh_d, method ="average")
+num_k <- find_k(wh_clust)
+plot(num_k)
+```
+
+Plot the heatmap after determine the statistical result
+
+```{r}
+heatmaply(normalize(wh_matrix[, -c(1, 2, 4, 5)]),
+          fontsize_row = 2,
+          k_row = 3,
+          dist_method = "euclidean",
+          hclust_method = "average")
+```
+
+heatmaply uses the seriation (系統化) package to find an optimal ordering of rows and columns. Optimal means to rotate the branches so that the sum of distances between each adjacent leaf (label) will be minimized.\
+There are methods such as OLO" (Optimal leaf ordering) and GW(more efficient).
+
+```{r}
+heatmaply(normalize(wh_matrix[, -c(1, 2, 4, 5)]),
+          fontsize_row = 2,
+          seriate = "OLO")
+```
+
+The option "none" gives us the dendrograms without any rotation that is based on the data matrix.
+
+```{r}
+heatmaply(normalize(wh_matrix[, -c(1, 2, 4, 5)]),
+          fontsize_row = 2,
+          seriate = "none")
+```
+
+### Working with colour palettes
+
+```{r}
+heatmaply(normalize(wh_matrix[, -c(1, 2, 4, 5)]),
+          fontsize_row = 2,
+          seriate = "none",
+          colors = Blues)
+```
+
+### Customize the heatmap
+
+k_row is used to produce 5 groups.
+
+margins is used to change the top margin to 60 and row margin to 200.
+
+fontsize_row and fontsize_col are used to change the font size for row and column labels to 4.
+
+main is used to write the main title of the plot.
+
+xlab and ylab are used to write the x-axis and y-axis labels respectively.
+
+```{r}
+heatmaply(normalize(wh_matrix[, -c(1, 2, 4, 5)]),
+          fontsize_row = 2,
+          seriate = "none",
+          colors = Blues,
+          k_row = 5,
+          margins = c(NA,200,60,NA),
+          fontsize_col = 4,
+          main = "World Happiness Score and Variables by Country, 2018 \nDataTransformation using Normalise Method",
+          xlab = "World Happiness Indicators",
+          ylab = "World Countries")
+```
+
+# Parallel Coordinates Plot
+
+The strength of parallel plot is in their ability to bring meaningful multivariate patterns and comparisons to light when used interactively for analysis.
+
+## Data preparation
+```{r}
+pacman::p_load(GGally,parallelPlot,tidyverse)
+```
+
+```{r}
+wh <- read_csv("data/WHData-2018.csv")
+glimpse(wh)
+```
+## Plotting Static Parallel Coordinates Plot
+With boxplot
+
+- groupColumn argument is used to group the observations ( by using a single variable (i.e. here is Region) and color the parallel coordinates lines
+- scale argument is used to scale the variables in the parallel coordinate plot. The method univariately scale each variable so the minimum of the variable is zero and the maximum is one.
+- alphaLines argument is used to reduce the intensity of the line colour to 0.2. The value range is between 0 to 1.
+- boxplot argument is used to turn on the boxplot. The default is FALSE.
+
+```{r}
+ggparcoord(data = wh,
+           columns = c(7:12),
+           groupColumn = 2,
+           scale ="uniminmax",
+           alphaLines  = 0.2,
+           boxplot = TRUE,
+           title = "Parallel Coordinates Plot of World Happines Variables")+ theme(legend.position = "right",                                                 axis.text = element_text(size = 4))
+```
+## Parallel coordinates with facet
+hjust argument accepts a value between 0 and 1, where 0 represents left justification, 0.5 represents center justification, and 1 represents right justification. 
+```{r}
+ggparcoord(data = wh,
+           columns = c(7:12),
+           groupColumn = 2,
+           scale ="uniminmax",
+           alphaLines  = 0.2,
+           boxplot = TRUE,
+           title = "Multiple Parallel Coordinates Plots of World Happines Variables by Region")+
+  facet_wrap(~ Region)+ #use angle and hjust to avoid text to overlap
+  theme(axis.text.x = element_text(angle = 30,hjust = 1),
+        axis.text = element_text(size = 4),
+        strip.text = element_text(size = 5))
+```
+
+## Interactive Parallel Coordinates Plot
+```{r}
+wh <- wh %>% 
+  select("Happiness score",c(7:12))
+```
+
+change the default blue colour scheme by using continousCS argument
+```{r}
+parallelPlot(wh,
+             width = 320,
+             height = 250,
+             rotateTitle = TRUE,
+             continuousCS = "YlOrRd")
+```
+
+## Parallel coordinates plot with histogram
+```{r}
+histoVisibility <- rep(TRUE,ncol(wh))
+parallelPlot(wh,
+             rotateTitle = TRUE,
+             histoVisibility = histoVisibility)
+```
+
+# Treemap Visualisation
+## Data preparation
+```{r}
+pacman::p_load(treemap, treemapify, tidyverse)
+```
+
+```{r}
+realis2018 <- read_csv("data/realis2018.csv")
+glimpse(realis2018)
+```
+### Grouped summaries without the Pipe
+Aggregation functions such as sum() and meadian() obey the usual rule of missing values: if there’s any missing value in the input, the output will be a missing value. The argument na.rm = TRUE removes the missing values prior to computation.
+```{r}
+realis2018_summarised <- realis2018 %>% 
+  group_by(`Project Name`,`Planning Region`, `Planning Area`, `Property Type`, `Type of Sale`) %>% 
+summarise(
+`Total Unit Sold` = sum(`No. of Units`, na.rm = TRUE),
+`Total Area` = sum(`Area (sqm)`, na.rm = TRUE),
+`Median Unit Price ($ psm)` = median(`Unit Price ($ psm)`, na.rm = TRUE), 
+`Median Transacted Price` = median(`Transacted Price ($)`, na.rm = TRUE), .groups = "drop")
+```
+
+## Designing Treemap
+### Designing a static treemap
+```{r}
+realis_selected <- realis2018_summarised %>% 
+  filter(`Property Type` == "Condominium", 
+         `Type of Sale` == "Resale")
+realis_selected
+```
+
+```{r}
+treemap(realis_selected,
+        index = c("Planning Region", "Planning Area", "Project Name"),
+        vSize = "Total Unit Sold",
+        # need to define type so that vColor can wotk
+        type = "value",
+        vColor = "Median Unit Price ($ psm)",
+        title="Resale Condominium by Planning Region and Area, 2017",
+        title.legend = "Median Unit Price (S$ per sq. m)")
+```
+- index
+The index vector must consist of at least two column names or else no hierarchy treemap will be plotted.
+If multiple column names are provided, the first name is the highest aggregation level, the second name the second highest aggregation level, and so on.
+
+- vSize
+The column must not contain negative values. 
+
+###  The “value” type treemap
+```{r}
+treemap(realis_selected,
+        index = c("Planning Region", "Planning Area", "Project Name"),
+        vSize = "Total Unit Sold",
+        # need to define type so that vColor can wotk
+        type = "value",
+        vColor = "Median Unit Price ($ psm)",
+        palette = "RdYlBu",
+        title="Resale Condominium by Planning Region and Area, 2017",
+        title.legend = "Median Unit Price (S$ per sq. m)")
+```
+
+### The “manual” type treemap
+The “manual” treemap simply maps min(values) to the left-end color, max(values) to the right-end color, and mean(range(values)) to the middle color.
+```{r}
+treemap(realis_selected,
+        index=c("Planning Region", "Planning Area", "Project Name"),
+        vSize="Total Unit Sold",
+        vColor="Median Unit Price ($ psm)",
+        type="manual",
+        palette="RdYlBu", 
+        title="Resale Condominium by Planning Region and Area, 2017",
+        title.legend = "Median Unit Price (S$ per sq. m)"
+        )
+```
+It is not wise to use diverging colour palette if the values are all positive or negative, which leading to confusion.
+
+Use single color palette instead:
+```{r}
+treemap(realis_selected,
+        index=c("Planning Region", "Planning Area", "Project Name"),
+        vSize="Total Unit Sold",
+        vColor="Median Unit Price ($ psm)",
+        type="manual",
+        palette="Blues", 
+        title="Resale Condominium by Planning Region and Area, 2017",
+        title.legend = "Median Unit Price (S$ per sq. m)"
+        )
+```
+
+### Treemap Layout
+The squarified treemap algorithm produces good aspect ratios, but ignores the sorting order of the rectangles.
+(In this layout, the rectangles are arranged in a way that aims to maximize the aspect ratio similarity, meaning that the rectangles are as close to a square shape as possible.)
+```{r}
+treemap(realis_selected,
+        index=c("Planning Region", "Planning Area", "Project Name"),
+        vSize="Total Unit Sold",
+        vColor="Median Unit Price ($ psm)",
+        type="manual",
+        palette="Blues", 
+        title="Resale Condominium by Planning Region and Area, 2017",
+        algorithm = "squarified",
+        title.legend = "Median Unit Price (S$ per sq. m)"
+        )
+```
+
+When “pivotSize” algorithm is used, sortID argument can be used to dertemine the order in which the rectangles are placed from top left to bottom right.
+(The size of each rectangle represents a variable (vSize in this case). The rectangles are arranged hierarchically,can be useful when you want to emphasize the relative size of the rectangles representing a specific variable.)
+```{r}
+treemap(realis_selected,
+        index=c("Planning Region", "Planning Area", "Project Name"),
+        vSize="Total Unit Sold",
+        vColor="Median Unit Price ($ psm)",
+        type="manual",
+        palette="Blues", 
+        algorithm = "pivotSize",
+        sortID = "Median Transacted Price",
+        title="Resale Condominium by Planning Region and Area, 2017",
+        title.legend = "Median Unit Price (S$ per sq. m)"
+        )
+```
+
+
+## treemapify Package
+```{r}
+ggplot(data = realis_selected,
+       aes(area = `Total Unit Sold`,
+           fill = `Median Unit Price ($ psm)`),
+       layout = "scol",
+       start = "bottomleft")+
+  geom_treemap()+
+  scale_fill_gradient(low = "light blue", high = "blue")
+```
+
+### Group by 
+Group by Planning Region, planning area
+```{r}
+ggplot(data = realis_selected,
+       aes(area = `Total Unit Sold`,
+           fill = `Median Unit Price ($ psm)`,
+           subgroup = `Planning Region`,
+           subgroup2 = `Planning Area`)) + 
+  geom_treemap()
+```
+
+### Add boundary line
+```{r}
+ggplot(data = realis_selected,
+       aes(area = `Total Unit Sold`,
+           fill = `Median Unit Price ($ psm)`,
+           subgroup = `Planning Region`,
+           subgroup2 = `Planning Area`)) + 
+  geom_treemap()+
+  geom_treemap_subgroup2_border(colour = "gray40",
+                                size = 2)+
+  geom_treemap_subgroup_border(colour = "green")
+```
+
+## Interactive treemap
+```{r}
+library(d3treeR)
+```
+
+```{r}
+library(devtools)
+install_github("timelyportfolio/d3treeR")
+```
+
+```{r}
+tm <- treemap(realis2018_summarised,
+       index=c("Planning Region", "Planning Area"),
+        vSize="Total Unit Sold",
+        vColor="Median Unit Price ($ psm)",
+        type="value",
+         title="Private Residential Property Sold, 2017",
+        title.legend = "Median Unit Price (S$ per sq. m)")
+```
+
+```{r}
+d3tree(tm,rootname = "Singapore" )
+```
+
+>>>>>>> a8cf15a370c7cd3e626dd6cde0e3ed219de85c98

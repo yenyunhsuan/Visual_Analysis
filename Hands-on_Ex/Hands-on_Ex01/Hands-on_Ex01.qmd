@@ -1,0 +1,154 @@
+---
+title: "Hands-on Exercise 1 Introduction to Visual Analytics"
+author: "Yen Yun Hsuan"
+---
+
+# Getting Started
+
+## Install and launching R packages
+
+The code chunk below uses p_load() of pacman package to check if tidyverse packages are installed in the computer. If they are, then they will be launched into R.
+
+```{r}
+pacman::p_load(tidyverse)
+```
+
+## Importing the data
+
+```{r}
+library(readr)
+exam_data <- read_csv("data/Exam_data.csv")
+```
+
+# Plotting a simple bar chart
+
+## Bar chart
+
+```{r}
+ggplot(data=exam_data,
+       aes(x=RACE))+
+  geom_bar()
+
+```
+
+### Horizontal bar chart
+
+Use coordinate to change bar into horizontal
+
+```{r}
+ggplot(data=exam_data,
+       aes(x=RACE))+
+  geom_bar()+
+  coord_flip()+
+  theme_minimal()
+```
+
+## Histogram
+
+```{r}
+hist(exam_data$MATHS)
+```
+
+default setting of bins are 30
+
+```{r}
+ggplot(data=exam_data,aes(x=MATHS))+
+  geom_histogram(bins=10, 
+                color='red',
+                 fill='blue')+
+  ggtitle("Histogram")
+```
+
+```{r}
+ggplot(data=exam_data,aes(x=MATHS,fill=GENDER))+
+  geom_histogram(bins=20, color="grey30")#color in histogram is bin line color
+```
+
+## Density plot
+
+it is a good way to replace histogram for continuous data if its distribution is smooth
+
+```{r}
+ggplot(data=exam_data,aes(x=MATHS,colour=GENDER))+
+  geom_density() 
+```
+
+## Dotplot
+
+```{r}
+ggplot(data=exam_data,aes(x=MATHS))+
+  geom_dotplot(dotsize=0.5,binwidth = 3)+
+  scale_y_continuous(NULL,breaks = NULL) #remove y-axis value
+```
+
+## Boxplot and Notch
+
+Notch(缺口) can check by whether notches are overlapping to see whether medians are the same
+
+```{r}
+ggplot(data=exam_data,aes(x=GENDER,y=MATHS))+
+  geom_boxplot(notch=TRUE)
+```
+
+## Violin Plot
+
+Can compare more clearly about the difference of distributions of multiple data
+
+```{r}
+ggplot(data=exam_data,aes(x=GENDER,y=MATHS))+
+  geom_violin()
+```
+
+## Scatter plot
+
+```{r}
+ggplot(data=exam_data,aes(x=ENGLISH,y=MATHS))+
+  geom_point()+
+  geom_smooth()+
+  coord_cartesian(xlim=c(0,100),ylim=c(0,100))
+```
+
+### Combine scatter and boxplot
+
+```{r}
+ggplot(data=exam_data,aes(x=GENDER,y=MATHS))+
+  geom_point(position="jitter",size=0.2)+
+  geom_boxplot()
+```
+
+### Statistical summary
+
+Add statistical summary can use stat_summary or overwrite by a new geom\_ setting
+
+```{r}
+ggplot(data=exam_data,aes(x=GENDER,y=MATHS))+
+  geom_point(position='jitter')+
+  geom_boxplot()+
+  stat_summary(geom="point",fun='mean',color='red',size=4)
+```
+
+```{r}
+ggplot(data=exam_data,aes(x=GENDER,y=MATHS))+
+  geom_boxplot()+
+  geom_point(stat="summary",        
+             colour ="red",          
+             size=4)
+```
+
+## Create 2D panel
+
+```{r}
+ggplot(data=exam_data,aes(x=MATHS))+
+  geom_histogram(bins=20)+
+  facet_wrap(~CLASS)
+```
+
+### Facet_grid
+
+Two discrete variables can use facet_grid
+
+```{r}
+ggplot(data=exam_data,aes(x=MATHS))+
+  geom_histogram(bins=20)+
+  facet_grid(~CLASS)
+```

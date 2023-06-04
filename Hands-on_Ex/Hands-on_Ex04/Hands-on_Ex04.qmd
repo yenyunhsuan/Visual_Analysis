@@ -1,0 +1,402 @@
+---
+title: "Hands-on_Ex04"
+execute: 
+  warning: false
+editor_options: 
+  chunk_output_type: inline
+---
+
+## Visual Statistical Analysis with ggstatsplot
+
+### Import package and data
+
+```{r}
+pacman::p_load(tidyverse, plotly, crosstalk, DT, ggdist, gganimate,ggstatsplot,readxl, performance, parameters, see)
+```
+
+```{r}
+library(readr)
+exam_data <- read_csv("data/Exam_data.csv")
+```
+
+### One sample test graph
+
+```{r}
+set.seed(1234)
+gghistostats(data=exam_data,x=ENGLISH, type="bayes",
+             test.values=70,xlab="English score")
+```
+
+### Two sample mean test
+
+Compare distribution/density of female and male performance in Math test
+
+```{r}
+ggbetweenstats(
+  data=exam_data,
+  x=GENDER,
+  y=MATHS,
+  type='np',
+  message=FALSE)
+```
+
+### One way ANOVA test
+
+```{r}
+ggbetweenstats(data=exam_data,
+               x=RACE,
+               y=ENGLISH,
+               type='p',
+               mean.ci=TRUE,
+               pairwise.comparisons = TRUE,
+               pairwise.display = 's',
+               p.adjust.method = 'fdr',
+               message=FALSE
+               )
+```
+
+### Correlatin test
+
+Can see Pearson correlation coefficient
+
+```{r}
+ggscatterstats(data=exam_data,
+               x=MATHS,
+               y=ENGLISH,
+               marginal = FALSE
+               )
+```
+
+### Significant Test of Association
+
+```{r}
+exam=exam_data %>% 
+  mutate(MATHS_bins=
+           cut(MATHS,
+               breaks=c(0,60,75,85,100)))
+
+ggbarstats(data=exam,
+           x=MATHS_bins,
+           y=GENDER)
+```
+
+## Toyota Corolla case with linear regression
+
+### Import the data
+
+```{r}
+resale_car <- read_xls("data/ToyotaCorolla.xls", 
+                       "data")
+colnames(resale_car)
+```
+
+### Build multiple linear regression
+
+```{r}
+model <- lm(Price ~ Age_08_04 + Mfg_Year + KM + 
+              Weight + Guarantee_Period, data = resale_car)
+model
+```
+
+### Check multicollinearity
+
+One way to detect multicollinearity (whether independent variables are highly correlated) is to calculate the variance inflation factor (VIF) for each independent variable.
+
+```{r}
+c <- check_collinearity(model)
+plot(c)
+```
+
+### Checking normality assumption
+
+Build model1(remove one highly correlated variable of mfg_year)
+
+```{r}
+model1 <- lm(Price ~ Age_08_04 + KM + 
+              Weight + Guarantee_Period, data = resale_car)
+check_n <- check_normality(model1)
+plot(check_n)
+```
+
+### Check model for homogeneity of variances
+
+Significance testing for linear regression models assumes that the model errors (or residuals) have constant variance.
+
+```{r}
+check_v <- check_heteroscedasticity(model1)
+plot(check_v)
+```
+
+### Complete check
+
+Can also check all the assumptions by one step. Influential observation is an observation in a dataset that, when removed, dramatically changes the coefficient estimates of a regression model
+
+```{r}
+check_model(model1)
+```
+
+### Parameter plot
+
+See the coefficient direction and strength in the plot.
+
+```{r}
+plot(parameters(model1))
+```
+
+### Visualising Regression Parameters
+
+```{r}
+ggcoefstats(model1, 
+            output = "plot")
+```
+
+## Visualize uncertainty of point estimates
+
+-   point estimate such as mean, addressed with uncertainty like CI se: standard error measures the variability of the sample means, estimate the precision of the sample mean as an estimate of the population mean.
+
+-   sd/sqrt(n-1), n-1 can been thought as degree of freedom
+
+```{r}
+sum_num <- exam_data %>% 
+  group_by(RACE) %>% 
+  summarise(n=n(),
+            mean=round(mean(MATHS),2),
+            sd=round(sd(MATHS),2)) %>% 
+  mutate(se=round(sd/sqrt(n-1),2))
+
+sum_num
+```
+
+```{r}
+knitr::kable(head(sum_num),format='html')
+```
+
+### Standard error visulization
+
+```{r}
+ggplot(sum_num)+
+  geom_errorbar(
+    aes(x=RACE,
+        ymin=mean-se,
+        ymax=mean+se),
+    width=0.2,
+    color='black',
+    alpha=0.9,
+    size=1)+
+  geom_point(aes(x=RACE,
+                 y=mean),
+             stat='identity',
+             color='red',
+             size=2,
+             alpha=1)+
+  ggtitle("Standard error of mean 
+          maths score by race")
+```
+
+### 95% Confidence interval
+
+use qnorm(0.975)=1.96 to calculate lower and upper bound
+
+```{r}
+sum_num$RACE <- factor(sum_num$RACE,levels = sum_num$RACE[order(-sum_num$mean)])
+ggplot(sum_num)+
+  geom_errorbar(
+    aes(x=RACE,
+        ymin=mean-1.96*se,
+        ymax=mean+1.96*se),
+    width=0.2,
+    color='black',
+    alpha=0.95,
+    size=1)+
+  geom_point(aes(x=RACE,
+                 y=mean),
+             stat='identity',
+             color='red',
+             size=2,
+             alpha=1)+
+  ggtitle("95% confidence interval of mean maths score by race")
+```
+
+### Uncertainty of point estimates with interactive error bars
+
+```{r}
+data <- highlight_key(sum_num)
+p <- ggplot(data)+
+  geom_errorbar(
+    aes(x=RACE,
+        ymin=mean-2.32*se,
+        ymax=mean+2.32*se),
+    width=0.2,
+    color='black',
+    alpha=0.99,
+    size=1)+
+  geom_point(aes(x=RACE,
+                 y=mean),
+             stat='identity',
+             color='red',
+             size=2,
+             alpha=1)+
+  ggtitle("99% confidence interval of mean maths score by race")
+
+gg <- highlight(ggplotly(p),"plotly_selected")
+
+crosstalk::bscols(gg,DT::datatable(data),widths = 5)
+```
+
+### Confidence interval plot with ggdist
+
+```{r}
+exam_data %>% 
+  ggplot(aes(x=RACE,y=MATHS,))+
+  stat_pointinterval()+
+  labs(
+    title="Visualising confidence intervals of mean math score",
+    subtitle = "Mean Point + Confidence-interval plot")
+  
+```
+
+### Use stat_gradientinterval
+
+```{r}
+exam_data %>% 
+  ggplot(aes(x = RACE, 
+             y = MATHS)) +
+  stat_gradientinterval(
+    fill='skyblue',
+    show.legend=TRUE
+  )+
+  labs(
+    title = "Visualising confidence intervals of mean math score",
+    subtitle = "Gradient + interval plot"
+  )
+```
+
+### Hypothetical Outcome Plots
+
+```{r}
+library(ungeviz)
+```
+
+Sample 25 data each time, and plot horizontal line grouping by race.
+
+```{r}
+ggplot(data=exam_data,
+       aes(x=factor(RACE),y=MATHS))+
+  geom_point(position=position_jitter(),size=0.5)+
+  geom_hpline(data=sampler(25,group = RACE),color = "#D55E00",size=0.1)+
+  theme_bw()
+```
+
+-   Transition_states means create sequence of frames to have animation of changes
+
+-   Draw indicating generating a column of sampling, starting with first frame to the twentieth frame
+
+```{r}
+ggplot(data=exam_data,
+       aes(x=factor(RACE),y=MATHS))+
+  geom_point(position=position_jitter(),size=0.5)+
+  geom_hpline(data=sampler(25,group = RACE),color = "#D55E00",size=0.1)+
+  theme_bw()+
+  transition_states(.draw,1,20)
+```
+
+```{r}
+exam_data
+```
+
+## Funnel Plots for Fair Comparisons
+
+```{r}
+pacman::p_load(tidyverse, FunnelPlotR, plotly, knitr)
+```
+
+```{r}
+covid19 <- read_csv("data/COVID-19_DKI_Jakarta.csv") %>% 
+  mutate_if(is.character,as.factor)
+covid19
+```
+
+PR: proportional ratio, indicates that the data represents the ratio of the numerator (deaths) to the denominator (positive cases) for each sub-district
+
+```{r}
+funnel_plot(numerator = covid19$Death,denominator = covid19$Positive,
+            group=covid19$`Sub-district`,
+            data_type = "PR",
+            x_range = c(0,6500),
+            y_range=c(0,0.05),
+            label=NA,
+            title = "COVID-19 Fatality Rate by Positive Cases",
+            x_label="Cumulative COVID-19 Positive Cases",
+            y_label="Cumulative Fatality Rate"
+            )
+```
+
+### Customnized funnel plot
+
+-   Standard error formula for probability: √ \[p (1-p) / n)
+
+-   Use reciprocal and square so bigger standard error can have bigger weight in the weighted mean
+
+-   seq function generates a sequence of number from 1 to maximum value of positive, incremental by 1, so that can count confidence interval of different sample size
+
+
+```{r}
+#| code-fold: true
+#| code-summary: "Show code"
+#| warning: false
+#| input: false
+
+df <- covid19 %>% 
+  mutate(rate=Death/Positive) %>% 
+  mutate(rate.se=sqrt(rate*(1-rate)/Positive)) %>% 
+  filter(rate>0)
+
+fit.mean <- weighted.mean(df$rate,1/(df$rate.se^2))
+
+number <- seq(1,max(df$Positive),1)
+upper.95 <- fit.mean+1.96*sqrt(fit.mean*(1-fit.mean)/number)
+lower.95 <- fit.mean-1.96*sqrt(fit.mean*(1-fit.mean)/number)
+upper.99 <- fit.mean+3.29*sqrt(fit.mean*(1-fit.mean)/number)
+lower.99 <- fit.mean-3.29*sqrt(fit.mean*(1-fit.mean)/number)
+table <- data.frame(upper.95,lower.95,upper.99,lower.99,number,fit.mean)
+
+p <-ggplot(df,aes(x=Positive,y=rate))+
+  geom_point(aes(label=(label=`Sub-district`),alpha=0.4))+
+  geom_line(data=table,aes(x=number,y=upper.95),size = 0.4, 
+            colour = "grey40", 
+            linetype = "dashed")+
+  geom_line(data=table,aes(x=number,y=lower.95),size = 0.4, 
+            colour = "grey40", 
+            linetype = "dashed")+
+  geom_line(data=table,aes(x=number,y=upper.99),size = 0.4, 
+            colour = "grey40", 
+            linetype = "dashed")+
+   geom_line(data=table,aes(x=number,y=lower.99),size = 0.4, 
+            colour = "grey40", 
+            linetype = "dashed")+
+  geom_hline(data=table,aes(yintercept=fit.mean),size = 0.4, 
+             colour = "grey40")+
+             coord_cartesian(ylim=c(0,0.05)) +
+  annotate("text", x = 1, y = -0.13, label = "95%", size = 3, colour = "grey40") + 
+  annotate("text", x = 4.5, y = -0.18, label = "99%", size = 3, colour = "grey40") + 
+  ggtitle("Cumulative Fatality Rate by Cumulative Number of COVID-19 Cases") +
+  xlab("Cumulative Number of COVID-19 Cases") + 
+  ylab("Cumulative Fatality Rate") +
+  theme_light() +
+  theme(plot.title = element_text(size=12),
+        legend.position = c(0.91,0.85), 
+        legend.title = element_text(size=7),
+        legend.text = element_text(size=7),
+        legend.background = element_rect(colour = "grey60", linetype = "dotted"),
+        legend.key.height = unit(0.3, "cm"))
+        
+p
+```
+
+### Interactive plot
+```{r}
+interative_p <-ggplotly(p,tooltip=c("label","x","y"))
+interative_p
+```
+
+
