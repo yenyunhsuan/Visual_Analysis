@@ -95,9 +95,9 @@ glimpse(MC2_edges)
 | weightkg          | The weight of the shipment in kilograms                                                                               |
 | Source/ target    | Some shipper(source) and receiver names/countries(target) was anonymized, so some are represented by numerical names. |
 
-# Temporal pattern
+# Company with irregular temporal pattern
 
-## Interrupted pattern
+## Temporal pattern
 
 The edges include records from 2028 to 2034, filter companies with higher numbers of shipment (here is weight \> 100) in the first two years 2028 and 2029.
 
@@ -244,19 +244,11 @@ plot
 
 Although there are irregular companies that both receive and send out shipments to others, it is noteworthy that these companies exhibit higher weights in the sending out edges, which suggests their potential roles as fishers. Besides, some irregular companies send out shipments to the same receiving companies, indicating a potential pattern of collaboration among these entities.
 
-# Egocentric of high degree
+# High in/out degree company
 
-```{r}
-g <- graph_from_data_frame(d=MC2_edges, vertices=MC2_nodes, directed=TRUE)
-```
+-   To calculate the out-degree/in-degree, we count the total number of unique companies to which each company sends out shipments or from which it receives shipments.
 
-Betweenness centrality is deﬁned as "[the number of shortest paths between nodes that pass through a particular node](https://jtr13.github.io/cc21fall2/network-visualization-in-r.html)".
-
-```{r}
-betweenness_centrality <- betweenness(g)
-MC2_nodes$betweenness_centrality <- betweenness_centrality[as.character(MC2_nodes$id)]
-head(sort(betweenness_centrality, decreasing=TRUE))
-```
+-   We then select the top 7 companies (same number of companies as the previous irregular pattern) with the highest out-degree/in-degree to analyze their business patterns and relationships.
 
 ```{r}
 edges_out <- MC2_edges %>%
@@ -271,26 +263,64 @@ edges_in <- MC2_edges %>%
   group_by(target) %>% 
   summarize(Weight = n(), .groups = "drop")
 
-degree_in <- merge(x = MC2_nodes, y = edges_in, by.x = "id", by.y = "target", all.x = TRUE)
 
-degree <- merge(x = degree_in, y = edges_out, by.x = "id", by.y = "source", all.x = TRUE)
-
-degree[is.na(degree)] <- 0
-
-# create data frame of top 3 firms with highest out-degree 
 top_in <-
 head(edges_in[order(edges_in$Weight, 
-decreasing = T),],n=10)
+decreasing = T),],n=7)
 
 top_out <-
 head(edges_out[order(edges_out$Weight, 
-decreasing = T),],n=10)
+decreasing = T),],n=7)
 ```
+
+## Temporal pattern
+
+Comparing with the temporal pattern of top 7 companies with most out-degree of shipments, we can find that there are no interruption of shipment records throughout 2028 to 2034 , showing more stable and regular business pattern.
+
+```{r}
+MC2_node_normal <- MC2_edges %>%
+  filter(source %in% top_out$source) %>%  
+  group_by(source,Year) %>%
+  summarise(Weight = n(), .groups = "drop")
+
+g_1 <- ggplot(MC2_node_normal, aes(Year,source)) +
+  geom_tile(aes(fill = Weight)) +
+  geom_text(aes(label = Weight),size = 2) +
+  labs(title = "Top company by weight")+
+  scale_fill_gradient(low = "white", high = "lightblue")+
+  # adjust angle to be 45 to avoid overlapping
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  theme(axis.text.y = element_text(size = 7)) 
+
+MC2_node_regular <- MC2_edges %>%
+  filter(source %in% top_out$source) %>%  
+  group_by(source, target,Year) %>% 
+  summarize(.groups = "drop") %>% 
+  group_by(source,Year) %>% 
+  summarize(Weight = n(), .groups = "drop")
+
+
+g_2 <- ggplot(MC2_node_regular, aes(Year,source)) +
+  geom_tile(aes(fill = Weight)) +
+  geom_text(aes(label = Weight),size = 3) +
+  labs(title = "Top company by out-degree")+
+  scale_fill_gradient(low = "white", high = "lightblue")+
+  # adjust angle to be 45 to avoid overlapping
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  theme(axis.text.y = element_text(size = 7))+
+  labs(title = "Out-Degree Connections")
+
+ggarrange(g_1, g_2, nrow = 2)
+```
+
+## Business network 
+
+-   Select edges include source of top out-degree companies and top in-degree companies, to see whether there are interconnected relationships of these companies.
 
 ```{r}
 top_edge <- MC2_edges %>% 
+    filter(target %in% top_in$target) %>%
   filter(source %in% top_out$source) %>% 
-  filter(target %in% top_in$target) %>% 
   group_by(source,target,Year) %>% 
   summarise(weight = n(),.groups = "drop") %>% 
   rename(from = source) %>% 
@@ -307,29 +337,18 @@ id2 <- top_edge %>%
 node <- rbind(id1, id2) %>% 
   distinct() %>% 
   mutate(group = ifelse(id %in% top_out$source, "fisher", "wholeseller"))
-
-MC2_graph <- tbl_graph(nodes = node,
-                       edges = top_edge,
-                       directed = TRUE)
 ```
+
+We observe that the fishers typically send shipments to all the top receivers (wholesalers), but not all wholesalers receive shipments from all the fishers.
 
 ```{r}
 visNetwork(node,
            top_edge) %>%
   visIgraphLayout(layout = "layout_nicely") %>%
   visOptions(highlightNearest = TRUE,
-             nodesIdSelection = TRUE) %>%
+             nodesIdSelection = TRUE,
+             selectedBy="group") %>%
   visEdges(arrows = "to") %>%
   visLegend() %>%
   visLayout(randomSeed = 123)
-```
-
-```{r}
-g <- graph_from_data_frame(d=top_edge, vertices=node, directed=TRUE)
-```
-
-```{r}
-betweenness_centrality <- betweenness(g)
-node$betweenness_centrality <- betweenness_centrality[as.character(node$id)]
-head(sort(betweenness_centrality, decreasing=TRUE))
 ```
