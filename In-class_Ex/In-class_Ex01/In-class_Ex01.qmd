@@ -1,0 +1,120 @@
+---
+title: "In Class Exercise 1"
+author: "Yen Yun Hsuan"
+---
+
+## Load package
+
+```{r}
+pacman::p_load(tidyverse)
+```
+
+## Import data
+
+```{r}
+exam_data <- read.csv("data/Exam_data.csv")
+```
+
+## Horizontal bar chart
+
+```{r}
+ggplot(data=exam_data,
+       aes(x=RACE))+
+  geom_bar()+
+  coord_flip()+
+  theme_minimal()+
+  theme(
+    panel.background = element_rect(fill='lightblue',color = 'lightblue'),
+    panel.grid.major = element_line(colour = 'white',size = 0.5,linewidth =  'solid'),
+    panel.grid.minor = element_line(colour = 'white',size=0.25,linewidth = 'solid')
+  )
+```
+
+### Bar chart with label
+
+1.  Bar chart with label 1. function(x) counts the occurrence frequency of different x and minor constant length(x), allowing x axis to sort by the count value by descending order.
+
+2.  state="count" indicate will use count method and applies to ..count.. and the plot
+
+3.  aes() to map with variables in the plot. paste0 is to concatenate strings
+
+4.  "after_stat(count)" or "..count.."(new version) means count of observations in each category
+
+5.  vjust is the lable position, -1 means a little above from the bar.
+
+6.  use theme(axis.title.y to adjust y axis title angle)
+
+```{r}
+ggplot(data=exam_data,aes(x=reorder(RACE,RACE,function(x)-length(x))))+
+  geom_bar()+
+  ylim(0,220)+
+  xlab("RACE")+
+  ylab("No. of \nPupils")+
+  geom_text(stat ="count",aes(label=paste0(after_stat(count),",",                                       round(after_stat(count)/sum(after_stat(count))*100,1),"%")),
+            vjust=-1)+
+  theme(axis.title.y=element_text(angle=0))
+```
+
+### Use fct_infreq() of forcats package
+
+1.  Use Command + Shift + M to type %\>%
+2.  fct_infreq can count the occurrence frequency of each category, and reorder by descending order
+3.  Mutate create a new column, and use %\>% to modify and apply new changes to the data frame.
+
+```{r}
+exam_data %>% 
+  mutate(RACE=fct_infreq(RACE)) %>% 
+  ggplot(aes(RACE))+
+  geom_bar()+
+  ylim(0,220)+
+  xlab("RACE")+
+  ylab("No. of \nPupils")+
+  geom_text(stat ="count",aes(label=paste0(after_stat(count),",",                                       round(after_stat(count)/sum(after_stat(count))*100,1),"%")),
+            vjust=-1)+
+  theme(axis.title.y=element_text(angle=0))
+```
+
+## Histogram
+
+### Add mean and median line
+
+1.  Use vline to draw vertical line.
+2.  xintercept as x-axis variable of MATHS
+3.  na.rm=T(True), means apply method of removing missing values before caculating mean.
+
+```{r}
+ggplot(data=exam_data,aes(MATHS))+
+  geom_histogram(bins=20,boundary=100,fill='lightblue',color='black')+
+  geom_vline(aes(xintercept=mean(MATHS,na.rm=T)),color='red',
+             linetype='dashed',size=1)+
+  geom_vline(aes(xintercept=median(MATHS,na.rm=TRUE)),color='grey',linetype='dashed',
+             size=1)
+```
+
+### Color comparison and facet grid
+
+1.  guides(fill=FALSE) means to turn off legend
+
+2.  create new histogram, one use sub_data without gender column, one use data and with black line and fill different color by gender.
+
+```{r}
+data <- exam_data
+sub_data <- data[,-3]
+
+ggplot(data,aes(x=ENGLISH,fill=GENDER))+
+  geom_histogram(data=sub_data,fill='grey',alpha=0.5)+
+  geom_histogram(colour='black')+
+  facet_wrap(~GENDER)+
+  guides(fill=FALSE)+
+  theme_bw()
+```
+
+## Scatter plot with quadrant
+
+```{r}
+ggplot(data=exam_data,aes(x=MATHS,y=ENGLISH))+
+  geom_point()+
+  coord_cartesian(xlim=c(0,100),ylim=c(0,100))+
+  geom_hline(aes(yintercept=50),color='grey',size=1,linetype='dashed')+
+  geom_vline(aes(xintercept=50),color='grey',size=1,linetype='dashed')
+```

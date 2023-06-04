@@ -355,5 +355,75 @@
     "title": "Visual Analytics and Applications",
     "section": "",
     "text": "Welcome to Visual Analytics and Applications homepage. In this website, you will find my coursework and portfolio prepared for this course.\nYou can find my contact information in ABOUT ME section."
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex01/In-class_Ex01.html",
+    "href": "In-class_Ex/In-class_Ex01/In-class_Ex01.html",
+    "title": "In Class Exercise 1",
+    "section": "",
+    "text": "pacman::p_load(tidyverse)"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex01/In-class_Ex01.html#import-data",
+    "href": "In-class_Ex/In-class_Ex01/In-class_Ex01.html#import-data",
+    "title": "In Class Exercise 1",
+    "section": "Import data",
+    "text": "Import data\n\nexam_data <- read.csv(\"data/Exam_data.csv\")"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex01/In-class_Ex01.html#horizontal-bar-chart",
+    "href": "In-class_Ex/In-class_Ex01/In-class_Ex01.html#horizontal-bar-chart",
+    "title": "In Class Exercise 1",
+    "section": "Horizontal bar chart",
+    "text": "Horizontal bar chart\n\nggplot(data=exam_data,\n       aes(x=RACE))+\n  geom_bar()+\n  coord_flip()+\n  theme_minimal()+\n  theme(\n    panel.background = element_rect(fill='lightblue',color = 'lightblue'),\n    panel.grid.major = element_line(colour = 'white',size = 0.5,linewidth =  'solid'),\n    panel.grid.minor = element_line(colour = 'white',size=0.25,linewidth = 'solid')\n  )\n\nWarning: The `size` argument of `element_line()` is deprecated as of ggplot2 3.4.0.\nℹ Please use the `linewidth` argument instead.\n\n\n\n\n\n\nBar chart with label\n\nBar chart with label 1. function(x) counts the occurrence frequency of different x and minor constant length(x), allowing x axis to sort by the count value by descending order.\nstate=“count” indicate will use count method and applies to ..count.. and the plot\naes() to map with variables in the plot. paste0 is to concatenate strings\n“after_stat(count)” or “..count..”(new version) means count of observations in each category\nvjust is the lable position, -1 means a little above from the bar.\nuse theme(axis.title.y to adjust y axis title angle)\n\n\nggplot(data=exam_data,aes(x=reorder(RACE,RACE,function(x)-length(x))))+\n  geom_bar()+\n  ylim(0,220)+\n  xlab(\"RACE\")+\n  ylab(\"No. of \\nPupils\")+\n  geom_text(stat =\"count\",aes(label=paste0(after_stat(count),\",\",                                       round(after_stat(count)/sum(after_stat(count))*100,1),\"%\")),\n            vjust=-1)+\n  theme(axis.title.y=element_text(angle=0))\n\n\n\n\n\n\nUse fct_infreq() of forcats package\n\nUse Command + Shift + M to type %>%\nfct_infreq can count the occurrence frequency of each category, and reorder by descending order\nMutate create a new column, and use %>% to modify and apply new changes to the data frame.\n\n\nexam_data %>% \n  mutate(RACE=fct_infreq(RACE)) %>% \n  ggplot(aes(RACE))+\n  geom_bar()+\n  ylim(0,220)+\n  xlab(\"RACE\")+\n  ylab(\"No. of \\nPupils\")+\n  geom_text(stat =\"count\",aes(label=paste0(after_stat(count),\",\",                                       round(after_stat(count)/sum(after_stat(count))*100,1),\"%\")),\n            vjust=-1)+\n  theme(axis.title.y=element_text(angle=0))"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex01/In-class_Ex01.html#histogram",
+    "href": "In-class_Ex/In-class_Ex01/In-class_Ex01.html#histogram",
+    "title": "In Class Exercise 1",
+    "section": "Histogram",
+    "text": "Histogram\n\nAdd mean and median line\n\nUse vline to draw vertical line.\nxintercept as x-axis variable of MATHS\nna.rm=T(True), means apply method of removing missing values before caculating mean.\n\n\nggplot(data=exam_data,aes(MATHS))+\n  geom_histogram(bins=20,boundary=100,fill='lightblue',color='black')+\n  geom_vline(aes(xintercept=mean(MATHS,na.rm=T)),color='red',\n             linetype='dashed',size=1)+\n  geom_vline(aes(xintercept=median(MATHS,na.rm=TRUE)),color='grey',linetype='dashed',\n             size=1)\n\nWarning: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.\nℹ Please use `linewidth` instead.\n\n\n\n\n\n\n\nColor comparison and facet grid\n\nguides(fill=FALSE) means to turn off legend\ncreate new histogram, one use sub_data without gender column, one use data and with black line and fill different color by gender.\n\n\ndata <- exam_data\nsub_data <- data[,-3]\n\nggplot(data,aes(x=ENGLISH,fill=GENDER))+\n  geom_histogram(data=sub_data,fill='grey',alpha=0.5)+\n  geom_histogram(colour='black')+\n  facet_wrap(~GENDER)+\n  guides(fill=FALSE)+\n  theme_bw()\n\nWarning: The `<scale>` argument of `guides()` cannot be `FALSE`. Use \"none\" instead as\nof ggplot2 3.3.4.\n\n\n`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.\n`stat_bin()` using `bins = 30`. Pick better value with `binwidth`."
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex01/In-class_Ex01.html#scatter-plot-with-quadrant",
+    "href": "In-class_Ex/In-class_Ex01/In-class_Ex01.html#scatter-plot-with-quadrant",
+    "title": "In Class Exercise 1",
+    "section": "Scatter plot with quadrant",
+    "text": "Scatter plot with quadrant\n\nggplot(data=exam_data,aes(x=MATHS,y=ENGLISH))+\n  geom_point()+\n  coord_cartesian(xlim=c(0,100),ylim=c(0,100))+\n  geom_hline(aes(yintercept=50),color='grey',size=1,linetype='dashed')+\n  geom_vline(aes(xintercept=50),color='grey',size=1,linetype='dashed')"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex03/In-class_Ex03.html",
+    "href": "In-class_Ex/In-class_Ex03/In-class_Ex03.html",
+    "title": "In-class_Ex03",
+    "section": "",
+    "text": "Tableau Public: https://public.tableau.com/app/profile/yun.hsuan.yen"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex04/In-class_Ex04.html",
+    "href": "In-class_Ex/In-class_Ex04/In-class_Ex04.html",
+    "title": "In-class_Ex04",
+    "section": "",
+    "text": "rstatix: transform the statistic test result into data table instead of just text\n\n\nShow code\npacman::p_load(rstatix,gt,patchwork,tidyverse)\n\n\n\nlibrary(magrittr) # needs to be run every time you start R and want to use %>%\nlibrary(vctrs)\n\n\nlibrary(readr)\nexam_data <- read_csv(\"data/Exam_data.csv\")"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex04/In-class_Ex04.html#plot-qq-plot",
+    "href": "In-class_Ex/In-class_Ex04/In-class_Ex04.html#plot-qq-plot",
+    "title": "In-class_Ex04",
+    "section": "Plot QQ plot",
+    "text": "Plot QQ plot\nQQ plot examine the sample data, so write sample=ENGLISH in the ggplot aes. Create stat_qq with normality distribution, and one line from the sample.\n\nPlotCode\n\n\n\n\n\n\n\n\n\n\nggplot(exam_data,\n       aes(sample=ENGLISH))+\n  stat_qq()+\n  stat_qq_line()"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex05/In-class_Ex05.html",
+    "href": "In-class_Ex/In-class_Ex05/In-class_Ex05.html",
+    "title": "In-class_Ex05",
+    "section": "",
+    "text": "Show the code\npacman::p_load(igraph, tidygraph, ggraph, \n               visNetwork, lubridate, clock,\n               tidyverse, graphlayouts,jsonlite)"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex05/In-class_Ex05.html#extract-data-frame-from-mc1-list-as-tibble-table",
+    "href": "In-class_Ex/In-class_Ex05/In-class_Ex05.html#extract-data-frame-from-mc1-list-as-tibble-table",
+    "title": "In-class_Ex05",
+    "section": "Extract data frame from MC1 list as tibble table",
+    "text": "Extract data frame from MC1 list as tibble table\nUse select to pick columns and reorganize the sequence of data frame\n\n\nShow the code\nMC1_noeds <- as_tibble(MC1$nodes) %>% \n  select(id,type,country)\n\n\n\n\nShow the code\nMC1_edges <- as_tibble(MC1$links) %>% \n  select(source,target,type,weight,key)"
   }
 ]

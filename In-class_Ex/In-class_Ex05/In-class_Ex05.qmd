@@ -1,0 +1,86 @@
+---
+title: "In-class_Ex05"
+plain: "Network Data Visualisation and Analysis"
+format: 
+  html: 
+    code-fold: true
+    code-summary: "Show the code"
+execute: 
+  warning: false
+editor: visual
+---
+
+# Import the package and data
+
+```{r}
+pacman::p_load(igraph, tidygraph, ggraph, 
+               visNetwork, lubridate, clock,
+               tidyverse, graphlayouts,jsonlite)
+```
+
+# Import json type data
+
+```{r}
+MC1 <- fromJSON("data/MC1.json")
+
+```
+
+## Extract data frame from MC1 list as tibble table
+
+Use select to pick columns and reorganize the sequence of data frame
+
+```{r}
+MC1_noeds <- as_tibble(MC1$nodes) %>% 
+  select(id,type,country)
+```
+
+```{r}
+MC1_edges <- as_tibble(MC1$links) %>% 
+  select(source,target,type,weight,key)
+```
+
+# Import other csv data
+
+```{r}
+GAStech_nodes <- read_csv("data/GAStech_email_node.csv")
+GAStech_edges <- read_csv("data/GAStech_email_edge-v2.csv")
+```
+
+```{r}
+head(GAStech_edges)
+```
+
+# Wrangle data type
+
+```{r}
+GAStech_edges <- GAStech_edges %>% 
+  mutate(SendDate = dmy(SentDate)) %>% 
+  mutate(Weekday = wday(SentDate,
+                        label = TRUE,
+                        abbr = FALSE))
+GAStech_edges
+
+```
+
+# Sum up by weekday
+
+```{r}
+GAStech_edges_aggregated <- GAStech_edges %>%
+  filter(MainSubject == "Work related") %>%
+  group_by(source, target, Weekday) %>%
+    summarise(Weight = n(),.groups="drop") %>%
+  filter(source!=target) %>%
+  filter(Weight > 1) 
+
+GAStech_edges_aggregated
+  
+```
+
+# Build tidygraph data
+
+```{r}
+GAStech_graph <- tbl_graph(nodes = GAStech_nodes,
+                           edges = GAStech_edges_aggregated,
+                           directed = TRUE)
+GAStech_graph
+```

@@ -1,0 +1,59 @@
+---
+title: "In-class_Ex04"
+author: "Yen Yun Hsuan"
+date: "6 May 2023"
+format: html
+editor: visual
+execute: 
+  warning: false
+---
+
+## Install package and import data
+
+rstatix: transform the statistic test result into data table instead of just text
+
+```{r}
+#| code-fold: true
+#| code-summary: "Show code"
+#| warning: false
+#| input: false
+pacman::p_load(rstatix,gt,patchwork,tidyverse)
+```
+
+```{r}
+library(magrittr) # needs to be run every time you start R and want to use %>%
+library(vctrs)
+```
+
+```{r}
+library(readr)
+exam_data <- read_csv("data/Exam_data.csv")
+```
+
+## Plot QQ plot
+
+QQ plot examine the sample data, so write sample=ENGLISH in the ggplot aes. Create stat_qq with normality distribution, and one line from the sample.
+
+::: panel-tabset
+## Plot
+
+```{r}
+#| echo: false
+
+ggplot(exam_data,
+       aes(sample=ENGLISH))+
+  stat_qq()+
+  stat_qq_line()
+```
+
+## Code
+
+```{r}
+#| eval: false
+
+ggplot(exam_data,
+       aes(sample=ENGLISH))+
+  stat_qq()+
+  stat_qq_line()
+```
+:::

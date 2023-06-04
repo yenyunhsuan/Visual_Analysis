@@ -30,13 +30,13 @@ website:
 
     - text: "In class Exercise"
       menu: 
-        - text: "In class Exercise 1"
+        - text: "In class Exercise Basic ggplot"
           href: "In-class_Ex/In-class_Ex01/In-class_Ex01.html"
-        - text: "In class Exercise 3"
+        - text: "In class Exercise Tableau public"
           href: "In-class_Ex/In-class_Ex03/In-class_Ex03.html"
-        - text: "In class Exercise 4"
+        - text: "In class Exercise QQ plot"
           href: "In-class_Ex/In-class_Ex04/In-class_Ex04.html"
-        - text: "In class Exercise 5"
+        - text: "In class Exercise Import JSON"
           href: "In-class_Ex/In-class_Ex05/In-class_Ex05.html"
           
     - text: "Take home Exercise"
