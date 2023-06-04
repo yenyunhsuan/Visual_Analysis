@@ -1,0 +1,101 @@
+---
+title: "Take Home Exercise 2"
+title-block-banner: true
+format: 
+  html: 
+    code-fold: true
+    code-summary: "Show the code"
+editor: visual
+author: Yen Yun Hsuan
+date: "28 May 2023"
+execute: 
+  warning: false
+---
+
+# Background
+
+This is [Mini-Challenge 2](https://vast-challenge.github.io/2023/MC2.html) of VAST Challenge 2023.
+
+The country of Oceanus has sought FishEye International's help in identifying companies possibly engaged in illegal, unreported, and unregulated (IUU) fishing.
+
+To facilitate their analysis, FishEye transformed the trade data into a knowledge graph. Using this knowledge graph, they hope to understand business relationships, including finding links that will help them stop IUU fishing and protect marine species that are affected by it. They are now looking for visualizations that provide more **detail about patterns for entities** in the knowledge graph.
+
+# Task
+
+FishEye knows from past experience that companies caught fishing illegally will shut down but will then often start up again under a different name. FishEye wants your help to use visual analytics to identify **temporal patterns** for individual entities and between entities in the knowledge graph FishEye created from trade records. Categorize the **types of business relationship patterns** you find. Limit your response to 600 words and 6 images.
+
+# Data preparation
+
+## Installing and launching R packages
+
+```{r}
+pacman::p_load(jsonlite, tidygraph, ggraph, visNetwork, lubridate, tidyverse, visNetwork,heatmaply,dply)
+```
+
+## Import data
+
+```{r}
+MC2 <- fromJSON("data/mc2_challenge_graph.json")
+```
+
+At the root-level, MC2 is a dictionary with graph-level properties specified as keys.
+
+Below extract data frame from MC2 list as tibble table.
+
+### Nodes
+
+-   Use select to reorder column sequences, with id column in the first.
+
+-   There are many NA values in shpcountry and rcvcountry columns, and it is hard to fill in those NA values, so exclude these two columns.
+
+| Col name   | Description                                                   |
+|------------------|------------------------------------------------------|
+| id         | Unique integers representing each company                     |
+| shpcountry | Country the company most often associated with when shipping  |
+| rcvcountry | Country the company most often associated with when receiving |
+
+```{r}
+MC2_node <- as_tibble(MC2$nodes)  
+colSums(is.na(MC2_node))
+
+
+MC2_nodes <- MC2_node %>% 
+  select(id,-shpcountry, -rcvcountry) 
+
+glimpse(MC2_nodes)
+```
+
+### Edges
+
+-   Examine the missing values and features format in Edge data.
+
+-   Use select to drop three "value-" columns with lots of NA, and drop "dataset" which is no need.
+
+-   The arrivaldate is treated as "Character" data type instead of date data type. Need to change the data type back to "Date"" data type.
+
+-   Create a column Year as factor format since Date is too detailed for analysis
+
+```{r}
+MC2_edge <- as_tibble(MC2$links) 
+
+colSums(is.na(MC2_edge))
+
+glimpse(MC2_edge)
+```
+
+```{r}
+MC2_edges <- MC2_edge%>%
+  mutate(arrival_date  = ymd(arrivaldate )) %>% 
+# Also create a column Year as factor format
+  mutate(Year = as.factor(year(arrivaldate))) %>%
+  select(source, target, arrival_date, Year, hscode, weightkg) %>% distinct()
+
+glimpse(MC2_edges)
+```
+
+| **Col name**      | Description                                                                                                           |
+|------------------|------------------------------------------------------|
+| arrival_date/Year | Date/Year the shipment arrived at port                                                                                |
+| hscode            | Harmonized System code (commodity code) for the shipment                                                              |
+| weightkg          | The weight of the shipment in kilograms                                                                               |
+| Source/ target    | Some shipper(source) and receiver names/countries(target) was anonymized, so some are represented by numerical names. |
