@@ -230,7 +230,7 @@ MC2_edge_irregular <- MC2_edge_irregular %>%
 nodes <- MC2_node_abnormal %>%
   mutate(group = ifelse(id %in% MC2_node_abnor$source, "irregular", "other"))
 
-visNetwork(nodes, MC2_edge_irregular, main = "Overall Business pattern") %>%
+plot <- visNetwork(nodes, MC2_edge_irregular, main = "Overall Business pattern") %>%
   visIgraphLayout(layout = "layout_with_fr") %>% 
   visEdges(arrows = "to", 
            smooth = list(enabled = TRUE, 
@@ -243,6 +243,7 @@ visNetwork(nodes, MC2_edge_irregular, main = "Overall Business pattern") %>%
   visLayout(randomSeed = 123)%>% 
   visInteraction(navigationButtons = TRUE) 
 
+plot
 ```
 
 Although there are irregular companies that both receive and send out shipments to others, it is noteworthy that these companies exhibit higher weights in the sending out edges, which suggests their potential roles as fishers. Besides, some irregular companies send out shipments to the same receiving companies, indicating a potential pattern of collaboration among these entities.
