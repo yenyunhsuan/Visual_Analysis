@@ -286,6 +286,10 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
   <li><a href="#edges" id="toc-edges" class="nav-link" data-scroll-target="#edges">Edges</a></li>
   </ul></li>
   </ul></li>
+  <li><a href="#temporal-pattern" id="toc-temporal-pattern" class="nav-link" data-scroll-target="#temporal-pattern">Temporal pattern</a>
+  <ul class="collapse">
+  <li><a href="#interrupted-pattern" id="toc-interrupted-pattern" class="nav-link" data-scroll-target="#interrupted-pattern">Interrupted pattern</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -312,7 +316,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <div class="cell">
 <details>
 <summary>Show the code</summary>
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(jsonlite, tidygraph, ggraph, visNetwork, lubridate, tidyverse, visNetwork,heatmaply,dply)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(jsonlite, tidygraph, ggraph, visNetwork, lubridate, tidyverse, visNetwork,heatmaply,dply,ggpubr)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 </section>
@@ -329,35 +333,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <section id="nodes" class="level3">
 <h3 class="anchored" data-anchor-id="nodes">Nodes</h3>
 <ul>
-<li><p>Use select to reorder column sequences, with id column in the first.</p></li>
-<li><p>There are many NA values in shpcountry and rcvcountry columns, and it is hard to fill in those NA values, so exclude these two columns.</p></li>
-</ul>
-<table class="table">
-<colgroup>
-<col style="width: 25%">
-<col style="width: 75%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Col name</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>id</td>
-<td>Unique integers representing each company</td>
-</tr>
-<tr class="even">
-<td>shpcountry</td>
-<td>Country the company most often associated with when shipping</td>
-</tr>
-<tr class="odd">
-<td>rcvcountry</td>
-<td>Country the company most often associated with when receiving</td>
-</tr>
-</tbody>
-</table>
+<li><p>There are many NA values in shpcountry and rcvcountry columns, and it is hard to fill in those NA values, so exclude these two columns.</p>
 <div class="cell">
 <details>
 <summary>Show the code</summary>
@@ -368,6 +344,10 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <pre><code>shpcountry rcvcountry    dataset         id 
      22359       2909          0          0 </code></pre>
 </div>
+</div></li>
+<li><p>Use select to reorder column sequences, with id column in the first.</p></li>
+</ul>
+<div class="cell">
 <details>
 <summary>Show the code</summary>
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>MC2_nodes <span class="ot">&lt;-</span> MC2_node <span class="sc">%&gt;%</span> </span>
@@ -423,6 +403,7 @@ $ target           &lt;chr&gt; "BaringoAmerica Marine Ges.m.b.H.", "BaringoAmeri
 $ valueofgoodsusd  &lt;dbl&gt; NA, NA, NA, NA, NA, NA, 87110, 188140, NA, 221110, 58…</code></pre>
 </div>
 </div>
+<p>The organized data frame of edge is as below:</p>
 <div class="cell">
 <details>
 <summary>Show the code</summary>
@@ -447,8 +428,8 @@ $ weightkg     &lt;int&gt; 4780, 6125, 10855, 11250, 11165, 11290, 9000, 19490, 
 </div>
 <table class="table">
 <colgroup>
-<col style="width: 25%">
-<col style="width: 75%">
+<col style="width: 26%">
+<col style="width: 73%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -475,9 +456,99 @@ $ weightkg     &lt;int&gt; 4780, 6125, 10855, 11250, 11165, 11290, 9000, 19490, 
 </tr>
 </tbody>
 </table>
-
-
 </section>
+</section>
+</section>
+<section id="temporal-pattern" class="level1">
+<h1>Temporal pattern</h1>
+<section id="interrupted-pattern" class="level2">
+<h2 class="anchored" data-anchor-id="interrupted-pattern">Interrupted pattern</h2>
+<p>The edges include records from 2028 to 2034, filter companies with higher numbers of shipment (here is weight &gt; 100) in the first two years 2028 and 2029.</p>
+<p>Then by following these steps, we can identify companies with high shipment records in the specified years and evaluate whether there are any anomalies in their temporal patterns.</p>
+<ol type="1">
+<li><p>Calculate the distinct number of years for each company.</p></li>
+<li><p>Determine the maximum and minimum year for each company to calculate the number of periods.</p></li>
+<li><p>Filter the companies that have missing records in several years.</p></li>
+</ol>
+<div class="cell">
+<details>
+<summary>Show the code</summary>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>MC2_edge_high <span class="ot">&lt;-</span> MC2_edges <span class="sc">%&gt;%</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(Year <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">2028</span>, <span class="dv">2029</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(source,Year) <span class="sc">%&gt;%</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">weight =</span> <span class="fu">n</span>(),<span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(weight <span class="sc">&gt;</span> <span class="dv">100</span>)</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>MC2_edge_abnormal <span class="ot">&lt;-</span> MC2_edges<span class="sc">%&gt;%</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(source <span class="sc">%in%</span> MC2_edge_high<span class="sc">$</span>source) <span class="sc">%&gt;%</span> </span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(source) <span class="sc">%&gt;%</span> </span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">distinct_year =</span> <span class="fu">n_distinct</span>(Year)) <span class="sc">%&gt;%</span> </span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">Year =</span> <span class="fu">as.numeric</span>(<span class="fu">as.character</span>(Year))) <span class="sc">%&gt;%</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(source,distinct_year) <span class="sc">%&gt;%</span> </span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">max_year =</span> <span class="fu">max</span>(Year), <span class="at">min_year =</span> <span class="fu">min</span>(Year),<span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">period =</span> max_year<span class="sc">-</span>min_year<span class="sc">+</span><span class="dv">1</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(period <span class="sc">&gt;</span><span class="dv">1</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(period <span class="sc">-</span> distinct_year<span class="sc">&gt;</span><span class="dv">2</span> )</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a><span class="fu">glimpse</span>(MC2_edge_abnormal)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Rows: 7
+Columns: 5
+$ source        &lt;chr&gt; "Asiotr GmbH &amp; Co. KG", "Brisa del Mar GmbH", "Coral del…
+$ distinct_year &lt;int&gt; 4, 4, 4, 4, 4, 3, 3
+$ max_year      &lt;dbl&gt; 2034, 2034, 2034, 2034, 2034, 2034, 2034
+$ min_year      &lt;dbl&gt; 2028, 2028, 2028, 2028, 2028, 2029, 2028
+$ period        &lt;dbl&gt; 7, 7, 7, 7, 7, 6, 7</code></pre>
+</div>
+</div>
+<p>Filter only the sources that were identified as abnormal in the previous step, and calculate the Weight and out-degree of each company by year.</p>
+<div class="cell">
+<details>
+<summary>Show the code</summary>
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># heatmap for weight </span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>MC2_node_abnor <span class="ot">&lt;-</span> MC2_edges <span class="sc">%&gt;%</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(source <span class="sc">%in%</span> MC2_edge_abnormal<span class="sc">$</span>source) <span class="sc">%&gt;%</span>  </span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(source,Year) <span class="sc">%&gt;%</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">Weight =</span> <span class="fu">n</span>(), <span class="at">.groups =</span> <span class="st">"drop"</span>)</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>g1 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(MC2_node_abnor, <span class="fu">aes</span>(Year,source)) <span class="sc">+</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_tile</span>(<span class="fu">aes</span>(<span class="at">fill =</span> Weight)) <span class="sc">+</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> Weight),<span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Irregular pattern by Weight"</span>)<span class="sc">+</span></span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gradient</span>(<span class="at">low =</span> <span class="st">"white"</span>, <span class="at">high =</span> <span class="st">"red"</span>)<span class="sc">+</span></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>  <span class="co"># adjust angle to be 45 to avoid overlapping</span></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">angle =</span> <span class="dv">45</span>, <span class="at">hjust =</span> <span class="dv">1</span>))<span class="sc">+</span></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.text.y =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">7</span>))</span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a><span class="co"># heatmap for out-degree connections</span></span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>MC2_node_abno <span class="ot">&lt;-</span> MC2_edges <span class="sc">%&gt;%</span></span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(source <span class="sc">%in%</span> MC2_edge_abnormal<span class="sc">$</span>source) <span class="sc">%&gt;%</span>  </span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(source, target,Year) <span class="sc">%&gt;%</span> </span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">%&gt;%</span> </span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(source,Year) <span class="sc">%&gt;%</span> </span>
+<span id="cb15-22"><a href="#cb15-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarize</span>(<span class="at">Weight =</span> <span class="fu">n</span>(), <span class="at">.groups =</span> <span class="st">"drop"</span>)</span>
+<span id="cb15-23"><a href="#cb15-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-24"><a href="#cb15-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-25"><a href="#cb15-25" aria-hidden="true" tabindex="-1"></a>g2 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(MC2_node_abno, <span class="fu">aes</span>(Year,source)) <span class="sc">+</span></span>
+<span id="cb15-26"><a href="#cb15-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_tile</span>(<span class="fu">aes</span>(<span class="at">fill =</span> Weight)) <span class="sc">+</span></span>
+<span id="cb15-27"><a href="#cb15-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> Weight),<span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb15-28"><a href="#cb15-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_gradient</span>(<span class="at">low =</span> <span class="st">"white"</span>, <span class="at">high =</span> <span class="st">"red"</span>)<span class="sc">+</span></span>
+<span id="cb15-29"><a href="#cb15-29" aria-hidden="true" tabindex="-1"></a>  <span class="co"># adjust angle to be 45 to avoid overlapping</span></span>
+<span id="cb15-30"><a href="#cb15-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">angle =</span> <span class="dv">45</span>, <span class="at">hjust =</span> <span class="dv">1</span>))<span class="sc">+</span></span>
+<span id="cb15-31"><a href="#cb15-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.text.y =</span> <span class="fu">element_text</span>(<span class="at">size =</span> <span class="dv">7</span>))<span class="sc">+</span></span>
+<span id="cb15-32"><a href="#cb15-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Irregular pattern by Out Degree"</span>)</span>
+<span id="cb15-33"><a href="#cb15-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-34"><a href="#cb15-34" aria-hidden="true" tabindex="-1"></a><span class="fu">ggarrange</span>(g1, g2, <span class="at">nrow =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output-display">
+<p><img src="Take-home_Ex02_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>We can observe these companies experienced a peak in the weight of shipments during the years 2028 and 2029. However, there is a substantial gap in their shipment records for several years, and shipments resumed with a significantly lower number of shipments per year.</p>
+<p>Furthermore, when examining the number of companies these companies ship out to, it becomes evident that both Omo River and Ocean Explorers have experienced a significant drop in the number of outbound connections to other companies. On the other hand, the remaining companies generally have less than five outbound connections each.</p>
+
+
 </section>
 </section>
 

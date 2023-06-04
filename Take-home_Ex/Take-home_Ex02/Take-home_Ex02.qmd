@@ -29,7 +29,7 @@ FishEye knows from past experience that companies caught fishing illegally will 
 ## Installing and launching R packages
 
 ```{r}
-pacman::p_load(jsonlite, tidygraph, ggraph, visNetwork, lubridate, tidyverse, visNetwork,heatmaply,dply)
+pacman::p_load(jsonlite, tidygraph, ggraph, visNetwork, lubridate, tidyverse, visNetwork,heatmaply,dply,ggplot2,gridExtra)
 ```
 
 ## Import data
@@ -44,21 +44,16 @@ Below extract data frame from MC2 list as tibble table.
 
 ### Nodes
 
--   Use select to reorder column sequences, with id column in the first.
-
 -   There are many NA values in shpcountry and rcvcountry columns, and it is hard to fill in those NA values, so exclude these two columns.
 
-| Col name   | Description                                                   |
-|------------------|------------------------------------------------------|
-| id         | Unique integers representing each company                     |
-| shpcountry | Country the company most often associated with when shipping  |
-| rcvcountry | Country the company most often associated with when receiving |
+    ```{r}
+    MC2_node <- as_tibble(MC2$nodes)  
+    colSums(is.na(MC2_node))
+    ```
+
+-   Use select to reorder column sequences, with id column in the first.
 
 ```{r}
-MC2_node <- as_tibble(MC2$nodes)  
-colSums(is.na(MC2_node))
-
-
 MC2_nodes <- MC2_node %>% 
   select(id,-shpcountry, -rcvcountry) 
 
@@ -83,6 +78,8 @@ colSums(is.na(MC2_edge))
 glimpse(MC2_edge)
 ```
 
+The organized data frame of edge is as below:
+
 ```{r}
 MC2_edges <- MC2_edge%>%
   mutate(arrival_date  = ymd(arrivaldate )) %>% 
@@ -94,8 +91,86 @@ glimpse(MC2_edges)
 ```
 
 | **Col name**      | Description                                                                                                           |
-|------------------|------------------------------------------------------|
+|-------------------|-----------------------------------------------------------------------------------------------------------------------|
 | arrival_date/Year | Date/Year the shipment arrived at port                                                                                |
 | hscode            | Harmonized System code (commodity code) for the shipment                                                              |
 | weightkg          | The weight of the shipment in kilograms                                                                               |
 | Source/ target    | Some shipper(source) and receiver names/countries(target) was anonymized, so some are represented by numerical names. |
+
+# Temporal pattern
+
+## Interrupted pattern
+
+The edges include records from 2028 to 2034, filter companies with higher numbers of shipment (here is weight \> 100) in the first two years 2028 and 2029.
+
+Then by following these steps, we can identify companies with high shipment records in the specified years and evaluate whether there are any anomalies in their temporal patterns.
+
+1.  Calculate the distinct number of years for each company.
+
+2.  Determine the maximum and minimum year for each company to calculate the number of periods.
+
+3.  Filter the companies that have missing records in several years.
+
+```{r}
+MC2_edge_high <- MC2_edges %>%
+  filter(Year %in% c(2028, 2029)) %>%
+  group_by(source,Year) %>%
+  summarise(weight = n(),.groups = "drop") %>%
+  filter(weight > 100)
+
+MC2_edge_abnormal <- MC2_edges%>%
+  filter(source %in% MC2_edge_high$source) %>% 
+  group_by(source) %>% 
+  mutate(distinct_year = n_distinct(Year)) %>% 
+  mutate(Year = as.numeric(as.character(Year))) %>%
+  group_by(source,distinct_year) %>% 
+  summarize(max_year = max(Year), min_year = min(Year),.groups = "drop") %>% 
+  mutate(period = max_year-min_year+1) %>% 
+  filter(period >1) %>% 
+  filter(period - distinct_year>2 )
+
+glimpse(MC2_edge_abnormal)
+```
+
+Filter only the sources that were identified as abnormal in the previous step, and calculate the Weight and out-degree of each company by year.
+
+```{r}
+# heatmap for weight 
+MC2_node_abnor <- MC2_edges %>%
+  filter(source %in% MC2_edge_abnormal$source) %>%  
+  group_by(source,Year) %>%
+  summarise(Weight = n(), .groups = "drop")
+
+g1 <- ggplot(MC2_node_abnor, aes(Year,source)) +
+  geom_tile(aes(fill = Weight)) +
+  geom_text(aes(label = Weight),size = 3) +
+  labs(title = "Irregular pattern by Weight")+
+  scale_fill_gradient(low = "white", high = "red")+
+  # adjust angle to be 45 to avoid overlapping
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  theme(axis.text.y = element_text(size = 7))
+
+# heatmap for out-degree connections
+MC2_node_abno <- MC2_edges %>%
+  filter(source %in% MC2_edge_abnormal$source) %>%  
+  group_by(source, target,Year) %>% 
+  summarize(.groups = "drop") %>% 
+  group_by(source,Year) %>% 
+  summarize(Weight = n(), .groups = "drop")
+
+
+g2 <- ggplot(MC2_node_abno, aes(Year,source)) +
+  geom_tile(aes(fill = Weight)) +
+  geom_text(aes(label = Weight),size = 3) +
+  scale_fill_gradient(low = "white", high = "red")+
+  # adjust angle to be 45 to avoid overlapping
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  theme(axis.text.y = element_text(size = 7))+
+  labs(title = "Irregular pattern by Out Degree")
+
+arranged_plots <- grid.arrange(g1, g2, nrow = 2)
+```
+
+We can observe these companies experienced a peak in the weight of shipments during the years 2028 and 2029. However, there is a substantial gap in their shipment records for several years, and shipments resumed with a significantly lower number of shipments per year.
+
+Furthermore, when examining the number of companies these companies ship out to, it becomes evident that both Omo River and Ocean Explorers have experienced a significant drop in the number of outbound connections to other companies. On the other hand, the remaining companies generally have less than five outbound connections each.
