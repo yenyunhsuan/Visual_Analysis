@@ -1,0 +1,13 @@
+---
+title: "Take Home Exercise 3"
+title-block-banner: true
+format: 
+  html: 
+    code-fold: true
+    code-summary: "Show the code"
+editor: visual
+author: Yen Yun Hsuan
+date: "10 June 2023"
+execute: 
+  warning: false
+---

@@ -8,6 +8,8 @@ format:
 editor: visual
 author: Yen Yun Hsuan
 date: "28 May 2023"
+execute: 
+  warning: false
 ---
 
 # Background
@@ -89,7 +91,7 @@ glimpse(MC2_edges)
 ```
 
 | **Col name**      | Description                                                                                                           |
-|-----------------|-------------------------------------------------------|
+|------------------|------------------------------------------------------|
 | arrival_date/Year | Date/Year the shipment arrived at port                                                                                |
 | hscode            | Harmonized System code (commodity code) for the shipment                                                              |
 | weightkg          | The weight of the shipment in kilograms                                                                               |
@@ -313,7 +315,7 @@ g_2 <- ggplot(MC2_node_regular, aes(Year,source)) +
 ggarrange(g_1, g_2, nrow = 2)
 ```
 
-## Business network 
+## Business network
 
 -   Select edges include source of top out-degree companies and top in-degree companies, to see whether there are interconnected relationships of these companies.
 
@@ -339,7 +341,7 @@ node <- rbind(id1, id2) %>%
   mutate(group = ifelse(id %in% top_out$source, "fisher", "wholeseller"))
 ```
 
-We observe that the fishers typically send shipments to all the top receivers (wholesalers), but not all wholesalers receive shipments from all the fishers.
+We observe that the almost all fishers send shipments to all the top receivers (wholesalers), but there is one fisher does not have any relationship with any of these companies, so only six fishers appear in the graph.
 
 ```{r}
 visNetwork(node,
@@ -352,3 +354,45 @@ visNetwork(node,
   visLegend() %>%
   visLayout(randomSeed = 123)
 ```
+
+## Filter by hscode
+Filter the companies that either appearing in source and target, and other companies having relationships with them.
+Then filter hscode of 401120, that the company with the most out-degree has the most weight.
+
+
+```{r}
+edges <- MC2_edges %>% 
+    filter(target %in% top_in$target | source %in% top_out$source) %>% 
+  group_by(source,target,Year,hscode) %>% 
+  # filter the hscode with the most weight
+  summarise(weight = n(),.groups = "drop") %>% 
+    filter(hscode == 401120) %>% 
+  rename(from = source) %>% 
+  rename(to = target)
+
+id1 <- edges %>%
+  select(from) %>%
+  rename(id = from)
+
+id2 <- edges %>%
+  select(to) %>%
+  rename(id = to)
+
+top_nodes <- rbind(id1, id2) %>% 
+  distinct() %>% 
+  mutate(group = case_when(
+    id %in% top_out$source ~ "top fisher",
+    id %in% top_in$target ~ "top wholeseller",
+    TRUE ~ "others"
+  ))
+
+visNetwork(top_nodes, edges, height='350px', width="100%") %>%
+   visEdges(arrows = "to") %>% 
+  visLayout(randomSeed=21) %>% 
+  visLegend(width=0.1, position="right", main="Group") %>%
+  visOptions(highlightNearest=TRUE,
+             nodesIdSelection=TRUE,
+             selectedBy="group") 
+```
+
+In the main clusters, the prominent fishers are associated with the same wholesalers, while the leading wholesalers all maintain connections with the main clusters.
