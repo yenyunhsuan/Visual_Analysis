@@ -91,7 +91,7 @@ glimpse(MC2_edges)
 ```
 
 | **Col name**      | Description                                                                                                           |
-|------------------|------------------------------------------------------|
+|-------------------|-----------------------------------------------------------------------------------------------------------------------|
 | arrival_date/Year | Date/Year the shipment arrived at port                                                                                |
 | hscode            | Harmonized System code (commodity code) for the shipment                                                              |
 | weightkg          | The weight of the shipment in kilograms                                                                               |
@@ -356,9 +356,8 @@ visNetwork(node,
 ```
 
 ## Filter by hscode
-Filter the companies that either appearing in source and target, and other companies having relationships with them.
-Then filter hscode of 401120, that the company with the most out-degree has the most weight.
 
+Filter the companies that either appearing in source and target, and other companies having relationships with them. Then filter hscode of 401120, that the company with the most out-degree has the most weight.
 
 ```{r}
 edges <- MC2_edges %>% 

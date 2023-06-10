@@ -11,3 +11,214 @@ date: "10 June 2023"
 execute: 
   warning: false
 ---
+
+# Background
+
+This is [Mini-Challenge 3](https://vast-challenge.github.io/2023/MC3.html) of VAST Challenge 2023.
+
+FishEye International, a non-profit focused on countering illegal, unreported, and unregulated (IUU) fishing, has been given access to an international finance corporation's database on fishing related companies. They have transformed the database into a knowledge graph. It includes information about companies, owners, workers, and financial status. FishEye is aiming to use this graph to identify anomalies that could indicate a company is involved in IUU.
+
+# Task
+
+Use visual analytics to understand **patterns of groups** in the knowledge graph and **highlight anomalous groups.**
+
+1.  Use visual analytics to identify anomalies in the business groups present in the knowledge graph. Limit your response to 400 words and 5 images.
+
+2.  Develop a visual analytics process to find similar businesses and group them. This analysis should focus on a business's most important features and present those features clearly to the user. Limit your response to 400 words and 5 images.
+
+# Data preparation
+
+## Installing and launching R packages
+
+```{r}
+pacman::p_load(jsonlite, tidygraph, ggraph, 
+               visNetwork, graphlayouts, ggforce, 
+               skimr, tidytext, tidyverse)
+```
+
+## Import data
+
+```{r}
+mc3_data <- fromJSON("data/MC3.json")
+```
+
+### Extracting edges
+
+Convert data type from list to character by mutate and as.character
+
+```{r}
+mc3_edges <- as_tibble(mc3_data$links) %>% 
+  distinct() %>%
+  mutate(source = as.character(source),
+         target = as.character(target),
+         type = as.character(type)) %>%
+  group_by(source, target, type) %>%
+    summarise(weights = n(),.groups = "drop") %>%
+  filter(source!=target)
+```
+
+### Extracting nodes
+
+-   Same country may have different id, so cannot use distinct function, or some ids may be excluded
+
+-   revenue_omu should be numerical value, so first transform the list into character, then need to transform into numeric
+
+-   Reorder the dataframe column sequence by select, with id coming first
+
+-   Replace NA value in revenue_omu with 0
+
+-   Replace "character\[0\] in product_services with blank
+
+```{r}
+mc3_nodes <- as_tibble(mc3_data$nodes) %>% 
+  mutate(country = as.character(country),
+         id = as.character(id),
+         product_services = as.character(product_services),
+         revenue_omu = as.numeric(as.character(revenue_omu)),
+         type = as.character(type)) %>% 
+  select(id, country, type, revenue_omu, product_services) %>%
+mutate(revenue_omu = replace(revenue_omu, is.na(revenue_omu), 0), product_services = replace(product_services, product_services == "character(0)", ""))
+```
+
+# Data exploration
+
+## Edge dataframe
+
+Display the summary statistics
+
+```{r}
+skim(mc3_edges)
+```
+
+Display interactive table
+
+```{r}
+DT::datatable(mc3_edges)
+```
+
+Distribution of type
+
+```{r}
+ggplot(data = mc3_edges,aes(x=type, fill=type))+
+  geom_bar()
+```
+
+## Nodes dataframe
+
+No missing values in mc3_nodes
+
+```{r}
+skim(mc3_nodes)
+```
+
+```{r}
+DT::datatable(mc3_nodes)
+```
+
+There are three types, with beneficial owner the most.
+
+```{r}
+ggplot(data = mc3_nodes,aes(x=type, fill=type))+
+  geom_bar()
+```
+
+## Building network model with tidygraph
+
+```{r}
+id1 <- mc3_edges %>% 
+  select(source) %>% 
+  rename(id = source)
+
+id2 <- mc3_edges %>% 
+  select(target) %>% 
+  rename(id = target)
+
+#  all rows from the left data frame (mc3_nodes1 with distinct id1, id2) are preserved
+mc3_nodes1 <- rbind(id1,id2) %>% 
+  distinct() %>% 
+  left_join(mc3_nodes,
+            unmatched = 'drop')
+```
+
+```{r}
+mc3_graph <- tbl_graph(nodes = mc3_nodes1,
+                       edges = mc3_edges,
+                       directed = FALSE) %>% 
+  mutate(betweenness_centrality = centrality_betweenness(),
+         closeness_centrality = centrality_closeness())
+
+mc3_graph
+```
+
+# Text processing
+
+Perform basic text sensing using tidytext package for product_services in nodes dataframe.
+
+## Simple word count
+
+Count the frequency of "fish" mentioned in each row
+
+```{r}
+mc3_nodes %>% 
+  mutate(n_fish=str_count(product_services,'fish')) %>% 
+  arrange(desc(n_fish))
+```
+
+## Tokenisation
+
+Split text in product_services field into words with unnest_token() of tidytext.
+
+-    word: output column name that will be created as the text is unnested into it
+
+-   product_services: input column that the text comes from
+
+-   By default, punctuation has been stripped. (Use the to_lower = FALSE argument to turn off this behavior).
+
+-   By default, unnest_tokens() converts the tokens to lowercase, which makes them easier to compare or combine with other datasets.
+
+```{r}
+token_nodes <- mc3_nodes %>% 
+  unnest_tokens(word,product_services)
+```
+
+```{r}
+token_nodes %>% 
+  count(word,sort =TRUE) %>% 
+  top_n(15) %>% 
+# reordered according to the values in the n variable
+  mutate(word = reorder(word,n)) %>% 
+  ggplot(aes(x=word,y=n))+
+  geom_col()+xlab(NULL)+
+  coord_flip()+
+  labs(x = "Count",
+      y = "Unique words",
+      title = "Count of unique words found in product_services field")
+```
+
+Many of the frequent words are meaningless, such as 'and', so need to remove these words.
+
+## Removing stop words
+
+Use stop_words in the tidytext package to clean up stop words.
+
+-   Load the stop_words data included with tidytext.
+
+-   Then `anti_join()` of dplyr package is used to remove all stop words from the analysis, only the rows from token_nodesthat do not have a match in stop_words are retained in the result.
+
+```{r}
+stopword_removed <- token_nodes %>% 
+  anti_join(stop_words)
+```
+
+```{r}
+stopword_removed %>% 
+  count(word, sort = TRUE) %>% 
+  top_n(15) %>% 
+  mutate(word = reorder(word,n)) %>% 
+  ggplot(aes(x=word,y=n))+
+  geom_col()+xlab(NULL)+
+  coord_flip()+
+  labs(x = "Count",
+      y = "Unique words",
+      title = "Count of unique words found in product_services field")
+```
