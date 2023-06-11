@@ -20,11 +20,7 @@ FishEye International, a non-profit focused on countering illegal, unreported, a
 
 # Task
 
-Use visual analytics to understand **patterns of groups** in the knowledge graph and **highlight anomalous groups.**
-
-1.  Use visual analytics to identify anomalies in the business groups present in the knowledge graph. Limit your response to 400 words and 5 images.
-
-2.  Develop a visual analytics process to find similar businesses and group them. This analysis should focus on a business's most important features and present those features clearly to the user. Limit your response to 400 words and 5 images.
+Develop a visual analytics process to find **similar businesses and group them**. This analysis should focus on a business's **most important features** and present those features clearly to the user. Limit your response to 400 words and 5 images.
 
 # Data preparation
 
@@ -33,7 +29,7 @@ Use visual analytics to understand **patterns of groups** in the knowledge graph
 ```{r}
 pacman::p_load(jsonlite, tidygraph, ggraph, 
                visNetwork, graphlayouts, ggforce, 
-               skimr, tidytext, tidyverse)
+               skimr, tidytext, tidyverse,tm,topicmodels,reshape2,ggplot2,wordcloud,pals,Snowballac,Lda,Ldatuning,kableExtra,DT,flextable,remotes,ldatuning)
 ```
 
 ## Import data
@@ -154,9 +150,9 @@ mc3_graph
 
 Perform basic text sensing using tidytext package for product_services in nodes dataframe.
 
-## Simple word count
+## *Simple word count*
 
-Count the frequency of "fish" mentioned in each row
+*Count the frequency of "fish" mentioned in each row*
 
 ```{r}
 mc3_nodes %>% 
@@ -213,7 +209,7 @@ stopword_removed <- token_nodes %>%
 ```{r}
 stopword_removed %>% 
   count(word, sort = TRUE) %>% 
-  top_n(15) %>% 
+  top_n(30) %>% 
   mutate(word = reorder(word,n)) %>% 
   ggplot(aes(x=word,y=n))+
   geom_col()+xlab(NULL)+
@@ -221,4 +217,102 @@ stopword_removed %>%
   labs(x = "Count",
       y = "Unique words",
       title = "Count of unique words found in product_services field")
+```
+
+There are still some meaningless words, including "unknown, related, including, range", so extend the stopword dataframe and remove these words.
+
+```{r}
+extended_stopwords <- stop_words %>% 
+  bind_rows(data.frame(word = c('unknown','related','including','range','products')))
+
+stopword_removed_2 <- token_nodes %>% 
+  anti_join(extended_stopwords)
+```
+
+## Topic modelling
+
+Create a DTM(document term matrix) to capture the frequency of words across dataframe, then filtering terms based on frequency.
+
+```{r}
+# compute document term matrix with terms >= minimumFrequency
+minimumFrequency <- 5
+DTM <- DocumentTermMatrix(stopword_removed_2$word,control = list(bounds =list(global = c(minimumFrequency, Inf))))
+dim(DTM)
+```
+
+```{r}
+# exclude empty rows in DTM
+row_sums <- slam::row_sums(DTM)>0
+DTM <- DTM[row_sums,]
+
+```
+
+To determine the optimal number of topics, using the "Deveaud2014" metric for topic coherence, select 4 topics that yields a higher value, indicating a stronger degree of similarity between words within each topic.
+
+```{r}
+result <- ldatuning::FindTopicsNumber(
+  DTM,
+  topics = seq(from = 2, to = 15, by =1),
+  metrics = "Deveaud2014",
+  method = 'Gibbs',
+  control = list(seed = 1234),
+  verbose = TRUE
+)
+
+FindTopicsNumber_plot(result)
+```
+
+Build topic model with number of four, with 'Gibbs' sampling method, and with verbose = 100 to display the details of iteration progress.
+
+```{r}
+k <- 4
+set.seed(1234)
+topicmodel <- LDA(DTM,k,method = 'Gibbs',control = list(iter = 500, verbose = 100))
+```
+
+```{r}
+terms(topicmodel,5)
+```
+
+```{r}
+# see the probability of each word belonging to each topic
+topicmodel_tidy <- tidy(topicmodel,matrix ='beta')
+
+top_terms <- topicmodel_tidy %>%
+  group_by(topic) %>%
+  top_n(20, beta) %>%
+  arrange(topic, desc(beta))
+
+# Create a separate word cloud for each topic
+
+for (i in 1:4) {
+  topic_words <- subset(top_terms, topic == i)
+  wordcloud(
+    words = topic_words$term,
+    freq = topic_words$beta,
+    colors = brewer.pal(5, 'Dark2')
+  )
+}
+
+
+```
+
+```{r}
+# see the probability of each word belonging to each topic
+topicmodel_tidy <- tidy(topicmodel,matrix ='beta')
+
+# find top 5 words with maximum probability in each topic
+top_terms <- topicmodel_tidy %>% 
+  group_by(topic) %>% 
+  slice_max(beta, n = 5) %>% 
+  arrange(topic, -beta)
+
+# visulize by ggplot
+top_terms %>% 
+  mutate(term = reorder_within(term,beta,topic)) %>% 
+  ggplot(aes(beta, term, fill = factor(topic)))+
+  geom_col(show.legend = FALSE)+
+  facet_wrap(~topic, scales = "free_y")+
+  scale_y_reordered()+
+  theme(axis.text.x = element_blank())
 ```
