@@ -91,11 +91,18 @@ glimpse(MC2_edges)
 ```
 
 | **Col name**      | Description                                                                                                           |
-|-------------------|-----------------------------------------------------------------------------------------------------------------------|
+|---------------|---------------------------------------------------------|
 | arrival_date/Year | Date/Year the shipment arrived at port                                                                                |
 | hscode            | Harmonized System code (commodity code) for the shipment                                                              |
 | weightkg          | The weight of the shipment in kilograms                                                                               |
 | Source/ target    | Some shipper(source) and receiver names/countries(target) was anonymized, so some are represented by numerical names. |
+
+
+```{r}
+write_rds(MC2_nodes, "data/mc2_nodes.rds")
+write_rds(MC2_edges, "data/MC2_edges.rds")
+```
+
 
 # Company with irregular temporal pattern
 

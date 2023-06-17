@@ -164,7 +164,7 @@ mc3_nodes %>%
 
 Split text in product_services field into words with unnest_token() of tidytext.
 
--    word: output column name that will be created as the text is unnested into it
+-   word: output column name that will be created as the text is unnested into it
 
 -   product_services: input column that the text comes from
 
