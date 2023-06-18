@@ -29,7 +29,7 @@ FishEye knows from past experience that companies caught fishing illegally will 
 ## Installing and launching R packages
 
 ```{r}
-pacman::p_load(jsonlite, tidygraph, ggraph, visNetwork, lubridate, tidyverse, visNetwork,heatmaply,dply,ggplot2,ggpubr,RColorBrewer, igraph,clock,graphlayouts)
+pacman::p_load(jsonlite, tidygraph, ggraph, visNetwork, lubridate, tidyverse, visNetwork,heatmaply,dply,ggplot2,ggpubr,RColorBrewer, igraph,clock,graphlayouts,devtools)
 ```
 
 ## Import data
@@ -91,7 +91,7 @@ glimpse(MC2_edges)
 ```
 
 | **Col name**      | Description                                                                                                           |
-|-------------------|-----------------------------------------------------------------------------------------------------------------------|
+|-----------------|-------------------------------------------------------|
 | arrival_date/Year | Date/Year the shipment arrived at port                                                                                |
 | hscode            | Harmonized System code (commodity code) for the shipment                                                              |
 | weightkg          | The weight of the shipment in kilograms                                                                               |

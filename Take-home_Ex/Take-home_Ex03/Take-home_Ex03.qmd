@@ -30,7 +30,7 @@ Develop a visual analytics process to find **similar businesses and group them**
 pacman::p_load(jsonlite, tidygraph, ggraph, 
                visNetwork, graphlayouts, ggforce, 
                skimr, tidytext, tidyverse,tm,topicmodels,reshape2,ggplot2,wordcloud,pals,Snowballac,Lda,Ldatuning,kableExtra,DT,flextable,remotes,ldatuning,igraph,qgraph,
-               topicmodels.utils,LDAvis,tsne, semnet, servr)
+               topicmodels.utils,LDAvis,tsne, semnet, servr,devtools)
 ```
 
 ## Import data
@@ -237,7 +237,7 @@ topicmodel <- LDA(DTM,k,method = 'Gibbs',control = list(iter = 500, verbose = 10
 
 From the word cloud and feature bar plot, we can see the important features within similar company group.
 
-```{r, fig.width=8, fig.height=6}
+```{r, fig.width=8, fig.height=8}
 # see the probability of each word belonging to each topic
 topicmodel_tidy <- tidy(topicmodel,matrix ='beta')
 
@@ -282,5 +282,78 @@ top_terms %>%
   scale_y_reordered()+
   theme(axis.text.x = element_blank())
 ```
+# Network visual
+
+Derive the highest beta for each term in topic modelling dataframe
+```{r}
+topicmodel <- topicmodel_tidy %>% 
+  group_by(term) %>% 
+   slice(which.max(beta)) %>%
+  ungroup()
+```
+
+Join topic model result with node
+```{r}
+mc3_nodes_update <- left_join(stopword_removed_2, topicmodel, by = c("word"= "term"))
+
+mc3_nodes_update <- na.omit(mc3_nodes_update)
+```
+
+Selecting the word with the highest beta value for each topic within each company
+```{r}
+mc3_nodes_topic <- mc3_nodes_update %>%
+  group_by(id, country, type, revenue_omu) %>%
+  slice(which.max(beta)) %>%
+  ungroup() %>% 
+  distinct()
+```
+
+Build tidygraph with topic 1
+```{r}
+mc3_nodes_topic1 <- mc3_nodes_topic %>% 
+  filter(topic ==1)
+
+MC3_edge <- mc3_edges %>% 
+  filter(source %in% mc3_nodes_topic$id | target %in% mc3_nodes_topic1$id) %>% 
+  rename(from = source) %>%
+  rename(to = target) 
+
+id1 <- MC3_edge %>%
+  select(from) %>%
+  rename(id = from)
+id2 <- MC3_edge %>%
+  select(to) %>%
+  rename(id = to)
+
+mc3_node <- rbind(id1, id2) %>%
+  distinct() %>% 
+  left_join(mc3_nodes_topic, by = 'id')
+
+MC3_graph <- tbl_graph(nodes = mc3_node,
+                       edges = MC3_edge,
+                       directed =FALSE)%>%
+  mutate(betweenness_centrality = centrality_betweenness(),
+         closeness_centrality = centrality_closeness())
+
+MC3_graph
+```
+
+If filter by high betweenness centrality, can see that most of the companies features are not related to seafood, but about service and consumer.
+````{r, fig.width=8, fig.height=8}
+MC3_graph %>%
+  filter(betweenness_centrality >= 200000) %>%
+ggraph(layout = "fr")+
+  geom_edge_link(aes(width = weights), alpha = 0.50, edge_color = "grey20") +
+  geom_node_point(color = "gray", size = 20, show.legend = FALSE) +
+  geom_node_text(aes(label = word),  colour = 'black', size=5,show.legend = FALSE) 
+```
+
+
+
+
+
+
+
+
 
 

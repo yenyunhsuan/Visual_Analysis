@@ -557,7 +557,7 @@
     "href": "Take-home_Ex/Take-home_Ex02/Take-home_Ex02.html#installing-and-launching-r-packages",
     "title": "Take Home Exercise 2",
     "section": "Installing and launching R packages",
-    "text": "Installing and launching R packages\n\n\nShow the code\npacman::p_load(jsonlite, tidygraph, ggraph, visNetwork, lubridate, tidyverse, visNetwork,heatmaply,dply,ggplot2,ggpubr,RColorBrewer, igraph,clock,graphlayouts)"
+    "text": "Installing and launching R packages\n\n\nShow the code\npacman::p_load(jsonlite, tidygraph, ggraph, visNetwork, lubridate, tidyverse, visNetwork,heatmaply,dply,ggplot2,ggpubr,RColorBrewer, igraph,clock,graphlayouts,devtools)"
   },
   {
     "objectID": "Take-home_Ex/Take-home_Ex02/Take-home_Ex02.html#import-data",
@@ -697,7 +697,7 @@
     "href": "Take-home_Ex/Take-home_Ex03/Take-home_Ex03.html#installing-and-launching-r-packages",
     "title": "Take Home Exercise 3",
     "section": "Installing and launching R packages",
-    "text": "Installing and launching R packages\n\n\nShow the code\npacman::p_load(jsonlite, tidygraph, ggraph, \n               visNetwork, graphlayouts, ggforce, \n               skimr, tidytext, tidyverse,tm,topicmodels,reshape2,ggplot2,wordcloud,pals,Snowballac,Lda,Ldatuning,kableExtra,DT,flextable,remotes,ldatuning,igraph,qgraph,\n               topicmodels.utils,LDAvis,tsne, semnet, servr)"
+    "text": "Installing and launching R packages\n\n\nShow the code\npacman::p_load(jsonlite, tidygraph, ggraph, \n               visNetwork, graphlayouts, ggforce, \n               skimr, tidytext, tidyverse,tm,topicmodels,reshape2,ggplot2,wordcloud,pals,Snowballac,Lda,Ldatuning,kableExtra,DT,flextable,remotes,ldatuning,igraph,qgraph,\n               topicmodels.utils,LDAvis,tsne, semnet, servr,devtools)"
   },
   {
     "objectID": "Take-home_Ex/Take-home_Ex03/Take-home_Ex03.html#import-data",
