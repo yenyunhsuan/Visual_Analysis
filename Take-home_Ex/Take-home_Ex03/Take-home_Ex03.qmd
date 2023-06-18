@@ -29,7 +29,8 @@ Develop a visual analytics process to find **similar businesses and group them**
 ```{r}
 pacman::p_load(jsonlite, tidygraph, ggraph, 
                visNetwork, graphlayouts, ggforce, 
-               skimr, tidytext, tidyverse,tm,topicmodels,reshape2,ggplot2,wordcloud,pals,Snowballac,Lda,Ldatuning,kableExtra,DT,flextable,remotes,ldatuning)
+               skimr, tidytext, tidyverse,tm,topicmodels,reshape2,ggplot2,wordcloud,pals,Snowballac,Lda,Ldatuning,kableExtra,DT,flextable,remotes,ldatuning,igraph,qgraph,
+               topicmodels.utils,LDAvis,tsne, semnet, servr)
 ```
 
 ## Import data
@@ -92,13 +93,6 @@ Display interactive table
 DT::datatable(mc3_edges)
 ```
 
-Distribution of type
-
-```{r}
-ggplot(data = mc3_edges,aes(x=type, fill=type))+
-  geom_bar()
-```
-
 ## Nodes dataframe
 
 No missing values in mc3_nodes
@@ -111,54 +105,9 @@ skim(mc3_nodes)
 DT::datatable(mc3_nodes)
 ```
 
-There are three types, with beneficial owner the most.
-
-```{r}
-ggplot(data = mc3_nodes,aes(x=type, fill=type))+
-  geom_bar()
-```
-
-## Building network model with tidygraph
-
-```{r}
-id1 <- mc3_edges %>% 
-  select(source) %>% 
-  rename(id = source)
-
-id2 <- mc3_edges %>% 
-  select(target) %>% 
-  rename(id = target)
-
-#  all rows from the left data frame (mc3_nodes1 with distinct id1, id2) are preserved
-mc3_nodes1 <- rbind(id1,id2) %>% 
-  distinct() %>% 
-  left_join(mc3_nodes,
-            unmatched = 'drop')
-```
-
-```{r}
-mc3_graph <- tbl_graph(nodes = mc3_nodes1,
-                       edges = mc3_edges,
-                       directed = FALSE) %>% 
-  mutate(betweenness_centrality = centrality_betweenness(),
-         closeness_centrality = centrality_closeness())
-
-mc3_graph
-```
-
 # Text processing
 
 Perform basic text sensing using tidytext package for product_services in nodes dataframe.
-
-## *Simple word count*
-
-*Count the frequency of "fish" mentioned in each row*
-
-```{r}
-mc3_nodes %>% 
-  mutate(n_fish=str_count(product_services,'fish')) %>% 
-  arrange(desc(n_fish))
-```
 
 ## Tokenisation
 
@@ -227,6 +176,22 @@ extended_stopwords <- stop_words %>%
 
 stopword_removed_2 <- token_nodes %>% 
   anti_join(extended_stopwords)
+
+#remove s at the end of each word
+stopword_removed_2$word <- gsub("(.*)s$", '\\1', stopword_removed_2$word)
+```
+
+```{r}
+stopword_removed_2 %>% 
+  count(word, sort = TRUE) %>% 
+  top_n(30) %>% 
+  mutate(word = reorder(word,n)) %>% 
+  ggplot(aes(x=word,y=n))+
+  geom_col()+xlab(NULL)+
+  coord_flip()+
+  labs(x = "Count",
+      y = "Unique words",
+      title = "Count of unique words found in product_services field")
 ```
 
 ## Topic modelling
@@ -247,7 +212,7 @@ DTM <- DTM[row_sums,]
 
 ```
 
-To determine the optimal number of topics, using the "Deveaud2014" metric for topic coherence, select 4 topics that yields a higher value, indicating a stronger degree of similarity between words within each topic.
+To determine the optimal number of topics, using the "Deveaud2014" metric for topic coherence, select 3 topics that yields a higher value, indicating a stronger degree of similarity between words within each topic.
 
 ```{r}
 result <- ldatuning::FindTopicsNumber(
@@ -265,16 +230,14 @@ FindTopicsNumber_plot(result)
 Build topic model with number of four, with 'Gibbs' sampling method, and with verbose = 100 to display the details of iteration progress.
 
 ```{r}
-k <- 4
+k <- 3
 set.seed(1234)
 topicmodel <- LDA(DTM,k,method = 'Gibbs',control = list(iter = 500, verbose = 100))
 ```
 
-```{r}
-terms(topicmodel,5)
-```
+From the word cloud and feature bar plot, we can see the important features within similar company group.
 
-```{r}
+```{r, fig.width=8, fig.height=6}
 # see the probability of each word belonging to each topic
 topicmodel_tidy <- tidy(topicmodel,matrix ='beta')
 
@@ -285,7 +248,7 @@ top_terms <- topicmodel_tidy %>%
 
 # Create a separate word cloud for each topic
 
-for (i in 1:4) {
+for (i in 1:3) {
   topic_words <- subset(top_terms, topic == i)
   wordcloud(
     words = topic_words$term,
@@ -296,6 +259,8 @@ for (i in 1:4) {
 
 
 ```
+
+Based on the top feature, categorizing the groups of companies into the company type shown as below.
 
 ```{r}
 # see the probability of each word belonging to each topic
@@ -312,7 +277,10 @@ top_terms %>%
   mutate(term = reorder_within(term,beta,topic)) %>% 
   ggplot(aes(beta, term, fill = factor(topic)))+
   geom_col(show.legend = FALSE)+
-  facet_wrap(~topic, scales = "free_y")+
+  facet_wrap(~topic, scales = "free_y",labeller = labeller(topic = c("1" = "Service", "2" = "Seafood can", "3" = "Frozen seafood"))
+             )+
   scale_y_reordered()+
   theme(axis.text.x = element_blank())
 ```
+
+

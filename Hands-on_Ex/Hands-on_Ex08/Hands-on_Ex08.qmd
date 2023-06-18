@@ -85,6 +85,7 @@ write_rds(mpsz_pop2020, "data/rds/mpszpop2020.rds")
 ```
 
 ## 
+
 Choropleth Mapping Geospatial Data Using tmap
 
 ### Plotting a thematic map quickly by using qtm().
@@ -139,7 +140,7 @@ tm_polygons() is a wraper of tm_fill() and tm_border()
 
 tm_fill() shades the polygons by using the default colour scheme
 
-tm_borders() adds the borders of the shapefile onto the choropleth map: \
+tm_borders() adds the borders of the shapefile onto the choropleth map:\
 col = border colour,\
 lwd = border line width. The default is 1, and\
 lty = border line type. The default is "solid"
@@ -270,6 +271,7 @@ tmap_style('white')
 ## Small Multiple Choropleth Maps
 
 ### By assigning multiple values to at least one of the aesthetic arguments
+
 small multiple choropleth maps are created by defining ncols in tm_fill()
 
 ```{r, fig.height=6, fig.width=6, fig.align='center'}
@@ -282,7 +284,7 @@ tm_shape(mpsz_pop2020)+
   tmap_style("white")
 ```
 
-By assigning multiple values 
+By assigning multiple values
 
 ```{r, fig.height=6, fig.width=6, fig.align='center'}
 tm_shape(mpsz_pop2020)+
@@ -293,11 +295,10 @@ tm_shape(mpsz_pop2020)+
   tm_layout(legend.position = c("right", "bottom")) 
 ```
 
-
 ### By defining a group-by variable in tm_facets()
 
-style = 'quantile':the fill color will be determined based on quantiles of the values in the "DEPENDENCY" variable
-thres.poly = threshold of polygons, polygons with a "DEPENDENCY" value of 0 or below will not be shown on the map
+style = 'quantile':the fill color will be determined based on quantiles of the values in the "DEPENDENCY" variable thres.poly = threshold of polygons, polygons with a "DEPENDENCY" value of 0 or below will not be shown on the map
+
 ```{r}
 tm_shape(mpsz_pop2020)+
   tm_fill("DEPENDENCY",
@@ -310,7 +311,9 @@ tm_shape(mpsz_pop2020)+
             title.position = c('center','center'),
             title.size = 20) 
 ```
+
 ### By creating multiple stand-alone maps with tmap_arrange()
+
 ```{r, fig.height=10, fig.width=20}
 young <- tm_shape(mpsz_pop2020)+
   tm_polygons('YOUNG',style = 'quantile', palette = 'Blues')
@@ -320,8 +323,11 @@ old <- tm_shape(mpsz_pop2020)+
 
 tmap_arrange(young,old,asp = 1, ncol = 2)
 ```
+
 ## Mappping Spatial Object Meeting a Selection Criterion
+
 need comma after "CENTRAL REGION" to subset rows based on a condition while keeping all columns
+
 ```{r}
 tm_shape(mpsz_pop2020[mpsz_pop2020$REGION_N=="CENTRAL REGION",])+
   tm_fill("DEPENDENCY", 
@@ -339,7 +345,9 @@ tm_shape(mpsz_pop2020[mpsz_pop2020$REGION_N=="CENTRAL REGION",])+
 ```
 
 # Visualising Geospatial Point Data
+
 ## Data preparation
+
 ```{r}
 pacman::p_load(sf,tmap,tidyverse)
 ```
@@ -347,14 +355,17 @@ pacman::p_load(sf,tmap,tidyverse)
 ```{r}
 sgpools <- read_csv("data/aspatial/SGPools_svy21.csv")
 ```
+
 Notice that the sgpools data in tibble data frame and not the common R data frame.
+
 ```{r}
 list(sgpools) 
 ```
 
 Converts sgpools data frame into a simple feature data frame by using st_as_sf() of sf packages
 
-The crs argument required you to provide the coordinates system in epsg format. EPSG: 3414 is Singapore SVY21 Projected Coordinate System. 
+The crs argument required you to provide the coordinates system in epsg format. EPSG: 3414 is Singapore SVY21 Projected Coordinate System.
+
 ```{r}
 sgpools_sf <- st_as_sf(sgpools,
                        coords = c('XCOORD','YCOORD'),
@@ -366,10 +377,13 @@ list(sgpools_sf)
 ```
 
 ## Drawing Proportional Symbol Map
+
 ```{r}
 tmap_mode('view')
 ```
+
 ### Interactive point symbol map
+
 ```{r}
 tm_shape(sgpools_sf)+
   tm_bubbles(col = 'red',
@@ -379,6 +393,7 @@ tm_shape(sgpools_sf)+
 ```
 
 ### Proportional symbol map
+
 ```{r}
 tm_shape(sgpools_sf)+
   tm_bubbles(col = 'red',
@@ -388,6 +403,7 @@ tm_shape(sgpools_sf)+
 ```
 
 ### Mark different type with color
+
 ```{r}
 tm_shape(sgpools_sf)+
   tm_bubbles(col = "OUTLET TYPE",
@@ -397,6 +413,7 @@ tm_shape(sgpools_sf)+
 ```
 
 ### Interactive facet plot
+
 ```{r}
 tm_shape(sgpools_sf)+
   tm_bubbles(col = "OUTLET TYPE",
@@ -408,19 +425,25 @@ tm_shape(sgpools_sf)+
             sync = TRUE)
 ```
 
-Switch tmap’s Viewer back to plot mode by using the code chunk below.
+Switch tmap's Viewer back to plot mode by using the code chunk below.
+
 ```{r}
 tmap_mode("plot")
 ```
+
 # Analytical Mapping
+
 ## Data preparation
-The data set is a polygon feature data.frame providing information on water point of Nigeria at the LGA level. 
+
+The data set is a polygon feature data.frame providing information on water point of Nigeria at the LGA level.
+
 ```{r}
 NGA_wp <- read_rds("data/rds/NGA_wp.rds")
 NGA_wp
 ```
 
 ## Visualising distribution of non-functional water point
+
 ```{r}
 p1 <- tm_shape(NGA_wp)+
   tm_fill('total_wp',
@@ -448,6 +471,7 @@ tmap_arrange(p2,p1,nrow = 2)
 ## Plotting map of rate
 
 ### Deriving Proportion
+
 ```{r}
 NGA_wp <- NGA_wp %>% 
   mutate(pct_functional = wp_functional/total_wp) %>% 
@@ -468,14 +492,17 @@ tm_shape(NGA_wp)+
 ```
 
 ## Percentile Map
+
 Classification is designed to highlight extreme values at the lower and upper end of the scale, with the goal of identifying outliers.
 
 ### Data preparation
+
 Creating customised classification and extracting values
 
-var[,1]:  selects the first column, ",1" specifies with all rows from the first column.
+var\[,1\]: selects the first column, ",1" specifies with all rows from the first column.
 
 st_set_geomtry(NULL): When variables are extracted from an sf data.frame, the geometry is extracted as well, which may lead to the quantile() error. So need to drop geometry field.
+
 ```{r}
 NGA_wp <- NGA_wp %>% 
   drop_na()
@@ -486,16 +513,15 @@ var <- NGA_wp['pct_functional'] %>%
 
 quantile(var[,1],percent)
 ```
+
 ### Creating the get.var function:
 
 Extract a variable (i.e. wp_nonfunctional) as a vector out of a data.frame.
 
-arguments:
-- vname: variable name 
-- df: name of sf data frame
+arguments: - vname: variable name - df: name of sf data frame
 
-returns:
-v: vector with values (without a column name)
+returns: v: vector with values (without a column name)
+
 ```{r}
 get.var <- function(vname,df){
   v <- df[vname] %>% 
@@ -506,6 +532,7 @@ get.var <- function(vname,df){
 ```
 
 ### Combine function with mapping
+
 ```{r}
 percentmap <- function(vname,df,legtitle = NA,mtitle = "Percentile Map"){
   percent <- c(0,.01,.1,.5,.9,.99,1)
@@ -526,10 +553,13 @@ percentmap <- function(vname,df,legtitle = NA,mtitle = "Percentile Map"){
 ```
 
 ### Apply percentmap function
+
 ```{r, fig.height=5, fig.width=10}
 percentmap('total_wp',NGA_wp)
 ```
+
 ## Box map
+
 ```{r}
 ggplot (data = NGA_wp,
            aes(x= "",y=wp_nonfunctional))+
@@ -537,17 +567,15 @@ ggplot (data = NGA_wp,
 ```
 
 ### Creating the boxbreaks function
-When there are lower outliers, then the starting point for the breaks is the minimum value, and the second break is the lower fence. 
 
-arguments:
-- v: vector with observations
-- mult: multiplier for IQR (default 1.5)
-returns:
-bb: vector with 7 break points compute quartile and fences
+When there are lower outliers, then the starting point for the breaks is the minimum value, and the second break is the lower fence.
+
+arguments: - v: vector with observations - mult: multiplier for IQR (default 1.5) returns: bb: vector with 7 break points compute quartile and fences
 
 floor(x): rounds down x to the nearest integer.
 
 ceiling(x): rounds up x to the nearest integer.
+
 ```{r}
 boxbreaks <- function(v,mult=1.5) {
   qv <- unname(quantile(v))
@@ -577,7 +605,9 @@ boxbreaks <- function(v,mult=1.5) {
 ```
 
 ### Creating the get.var function
+
 extract a variable as a vector out of an sf data frame.
+
 ```{r}
 get.var <- function(vname,df) {
   v <- df[vname] %>% st_set_geometry(NULL)
@@ -592,6 +622,7 @@ boxbreaks(var)
 ```
 
 ### Boxmap function
+
 ```{r}
 boxmap <- function(vname,df,legtitle=NA,
                    mtitle="Box Map",
@@ -622,4 +653,3 @@ boxmap <- function(vname,df,legtitle=NA,
 tmap_mode('plot')
 boxmap("wp_nonfunctional", NGA_wp)
 ```
-

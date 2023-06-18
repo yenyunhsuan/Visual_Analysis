@@ -1,0 +1,101 @@
+---
+title: "Hands-on_Ex09"
+---
+
+# Data preparation
+
+```{r}
+pacman::p_load(lubridate, ggthemes, reactable,
+reactablefmtr, gt, gtExtras, tidyverse,RODBC)
+```
+
+### Import database
+odbcConnectAccess() of RODBC package is used used to import a database query table into R.
+```{r}
+library(RODBC)
+con <- odbcConnectAccess2007('data/Coffee Chain.mdb')
+coffeechain <- sqlFetch(con, 'CoffeeChain Query')
+write_rds(coffeechain, "data/CoffeeChain.rds")
+odbcClose(con)
+```
+
+
+### Import data
+```{r}
+coffeechain <- read_rds("data/CoffeeChain.rds")
+```
+
+```{r}
+product <- coffeechain %>%
+  group_by(`Product`) %>%
+  summarise(`target` = sum(`Budget Sales`),
+            `current` = sum(`Sales`)) %>%
+  ungroup()
+
+product
+```
+
+# Bullet chart
+```{r}
+ggplot(product,aes(Product,current))+
+  #maximum budget value
+  geom_col(aes(Product,max(target)*1.01), 
+           fill = 'grey85',width = 0.85)+
+  # 75% budget of each product
+  geom_col(aes(Product,target*0.75),
+           fill = 'grey60',width = 0.85)+
+    # 50% budget of each product
+  geom_col(aes(Product,target*0.5),
+           fill = 'grey50',width = 0.85)+
+  # current sales value of each product
+  geom_col(aes(Product,current),
+           fill = 'black',width = 0.35)+
+  #count the uncerntainty, define lower bound and upper bound as target
+  geom_errorbar(aes(y=target,x=Product,
+                    ymin=target,
+                    ymax=target),
+                width = 0.4,
+                colour = 'red')+
+  
+  coord_flip()
+```
+
+# Plotting sparklines
+Filter 2013 data by month
+```{r}
+sales_report <- coffeechain %>%
+  filter(Date>='2013-01-01') %>% 
+  mutate(Month = month(Date)) %>% 
+  group_by(Month,Product) %>% 
+  summarise(Sales = sum(Sales)) %>% 
+  ungroup() %>% 
+  select(Month, Product, Sales)
+```
+
+Compute the minimum, maximum and end othe the month sales.
+```{r}
+mins <- group_by(sales_report,Product) %>% 
+  # create subset by slice function
+  slice(which.min(Sales))
+
+maxs <- group_by(sales_report,Product) %>% 
+  slice(which.max(Sales))
+
+ends <- group_by(sales_report,Product) %>% 
+  filter(Month == max(Month))
+```
+
+Compute the 25 and 75 quantiles
+```{r}
+quarts <- sales_report %>% 
+  group_by(Product) %>% 
+  summarise(quart1 = quantile(Sales,0.25),
+            quart2 = quantile(Sales,0.75)) %>% 
+  right_join(sales_report)
+```
+
+Plot sparklines
+```{r}
+
+```
+
