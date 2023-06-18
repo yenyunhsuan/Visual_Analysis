@@ -284,6 +284,7 @@ top_terms %>%
 ```
 # Network visual
 
+## Build tidygraph
 Derive the highest beta for each term in topic modelling dataframe
 ```{r}
 topicmodel <- topicmodel_tidy %>% 
@@ -299,7 +300,7 @@ mc3_nodes_update <- left_join(stopword_removed_2, topicmodel, by = c("word"= "te
 mc3_nodes_update <- na.omit(mc3_nodes_update)
 ```
 
-Selecting the word with the highest beta value for each topic within each company
+Selecting the word with the highest beta value for each company
 ```{r}
 mc3_nodes_topic <- mc3_nodes_update %>%
   group_by(id, country, type, revenue_omu) %>%
@@ -308,10 +309,50 @@ mc3_nodes_topic <- mc3_nodes_update %>%
   distinct()
 ```
 
-Build tidygraph with topic 1
+## Topic 1
+
 ```{r}
 mc3_nodes_topic1 <- mc3_nodes_topic %>% 
   filter(topic ==1)
+
+MC3_edge <- mc3_edges %>% 
+  filter(source %in% mc3_nodes_topic1$id | target %in% mc3_nodes_topic1$id) %>% 
+  rename(from = source) %>%
+  rename(to = target) 
+
+id1 <- MC3_edge %>%
+  select(from) %>%
+  rename(id = from)
+id2 <- MC3_edge %>%
+  select(to) %>%
+  rename(id = to)
+
+mc3_node <- rbind(id1, id2) %>%
+  distinct() %>% 
+  left_join(mc3_nodes_topic1, by = 'id')
+
+MC3_graph <- tbl_graph(nodes = mc3_node,
+                       edges = MC3_edge,
+                       directed =FALSE)%>%
+  mutate(betweenness_centrality = centrality_betweenness())
+
+```
+
+If filter by high betweenness centrality, can see that company features are equipment and service only.
+````{r, fig.width=10, fig.height=10}
+MC3_graph %>%
+  filter(betweenness_centrality >= 2000) %>%
+ggraph(layout = "fr")+
+  geom_edge_link(aes(width = weights), alpha = 0.50, edge_color = "grey20") +
+  geom_node_point(color = "gray", size = 20, show.legend = FALSE) +
+  geom_node_text(aes(label = word),  colour = 'black', size=5,show.legend = FALSE) 
+
+```
+
+## Topic 2
+```{r}
+mc3_nodes_topic2 <- mc3_nodes_topic %>% 
+  filter(topic ==2)
 
 MC3_edge <- mc3_edges %>% 
   filter(source %in% mc3_nodes_topic$id | target %in% mc3_nodes_topic1$id) %>% 
@@ -327,7 +368,44 @@ id2 <- MC3_edge %>%
 
 mc3_node <- rbind(id1, id2) %>%
   distinct() %>% 
-  left_join(mc3_nodes_topic, by = 'id')
+  left_join(mc3_nodes_topic2, by = 'id')
+
+MC3_graph <- tbl_graph(nodes = mc3_node,
+                       edges = MC3_edge,
+                       directed =FALSE)%>%
+  mutate(betweenness_centrality = centrality_betweenness(),
+         closeness_centrality = centrality_closeness())
+```
+We can see that some company features with high betweenness centrality look abnormal, including unrelated features to fishing such as shoe and glove.
+````{r, fig.width=10, fig.height=10}
+MC3_graph %>%
+  filter(betweenness_centrality >= 100000) %>%
+ggraph(layout = "fr")+
+  geom_edge_link(aes(width = weights), alpha = 0.50, edge_color = "grey20") +
+  geom_node_point(color = "gray", size = 10, show.legend = FALSE) +
+  geom_node_text(aes(label = word),  colour = 'black', size=4,show.legend = FALSE) 
+```
+
+## Topic 3
+```{r}
+mc3_nodes_topic3 <- mc3_nodes_topic %>% 
+  filter(topic ==3)
+
+MC3_edge <- mc3_edges %>% 
+  filter(source %in% mc3_nodes_topic3$id | target %in% mc3_nodes_topic1$id) %>% 
+  rename(from = source) %>%
+  rename(to = target) 
+
+id1 <- MC3_edge %>%
+  select(from) %>%
+  rename(id = from)
+id2 <- MC3_edge %>%
+  select(to) %>%
+  rename(id = to)
+
+mc3_node <- rbind(id1, id2) %>%
+  distinct() %>% 
+  left_join(mc3_nodes_topic3, by = 'id')
 
 MC3_graph <- tbl_graph(nodes = mc3_node,
                        edges = MC3_edge,
@@ -335,18 +413,25 @@ MC3_graph <- tbl_graph(nodes = mc3_node,
   mutate(betweenness_centrality = centrality_betweenness(),
          closeness_centrality = centrality_closeness())
 
-MC3_graph
 ```
 
-If filter by high betweenness centrality, can see that most of the companies features are not related to seafood, but about service and consumer.
-````{r, fig.width=8, fig.height=8}
+For nodes with high betweenness centrality in topic 3, it is expected to see a majority of them being related to frozen/seafood and fish. However, there are some companies with unrelated features such as pharmaceutical and metal that have unexpectedly high betweenness centrality.
+````{r, fig.width=10, fig.height=10}
 MC3_graph %>%
-  filter(betweenness_centrality >= 200000) %>%
+  filter(betweenness_centrality >= 5000) %>%
 ggraph(layout = "fr")+
   geom_edge_link(aes(width = weights), alpha = 0.50, edge_color = "grey20") +
-  geom_node_point(color = "gray", size = 20, show.legend = FALSE) +
-  geom_node_text(aes(label = word),  colour = 'black', size=5,show.legend = FALSE) 
+  geom_node_point(color = "gray", size = 10, show.legend = FALSE) +
+  geom_node_text(aes(label = word),  colour = 'black', size=4,show.legend = FALSE) 
 ```
+
+
+
+
+
+
+
+
 
 
 

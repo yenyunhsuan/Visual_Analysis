@@ -775,5 +775,33 @@
     "title": "Take Home Exercise 3",
     "section": "Show topic modelling result",
     "text": "Show topic modelling result\n\n\nShow the code\nminimumFrequency <- 5\nDTM <- as.matrix(\n  DocumentTermMatrix(stopword_removed_2$word, \n                     control = \n                       list(bounds = \n                              list(global = \n                                     c(minimumFrequency, Inf)\n                              )\n                       )\n  )\n)\n\nrow_sums <- slam::row_sums(DTM) > 0\nDTM <- DTM[row_sums,]\n\ntmResult <- posterior(topicmodel)\n\n\njson <- createJSON(\n  phi = tmResult$terms, \n  theta = tmResult$topics, \n  doc.length = rowSums(DTM), \n  vocab = colnames(DTM), \n  term.frequency = colSums(DTM)\n)\n\n\nvis <- serVis(json)\n\n\nvis\n\n\nNULL"
+  },
+  {
+    "objectID": "Take-home_Ex/Take-home_Ex03/Take-home_Ex03.html#build-tidygraph",
+    "href": "Take-home_Ex/Take-home_Ex03/Take-home_Ex03.html#build-tidygraph",
+    "title": "Take Home Exercise 3",
+    "section": "Build tidygraph",
+    "text": "Build tidygraph\nDerive the highest beta for each term in topic modelling dataframe\n\n\nShow the code\ntopicmodel <- topicmodel_tidy %>% \n  group_by(term) %>% \n   slice(which.max(beta)) %>%\n  ungroup()\n\n\nJoin topic model result with node\n\n\nShow the code\nmc3_nodes_update <- left_join(stopword_removed_2, topicmodel, by = c(\"word\"= \"term\"))\n\nmc3_nodes_update <- na.omit(mc3_nodes_update)\n\n\nSelecting the word with the highest beta value for each company\n\n\nShow the code\nmc3_nodes_topic <- mc3_nodes_update %>%\n  group_by(id, country, type, revenue_omu) %>%\n  slice(which.max(beta)) %>%\n  ungroup() %>% \n  distinct()"
+  },
+  {
+    "objectID": "Take-home_Ex/Take-home_Ex03/Take-home_Ex03.html#topic-1",
+    "href": "Take-home_Ex/Take-home_Ex03/Take-home_Ex03.html#topic-1",
+    "title": "Take Home Exercise 3",
+    "section": "Topic 1",
+    "text": "Topic 1\n\n\nShow the code\nmc3_nodes_topic1 <- mc3_nodes_topic %>% \n  filter(topic ==1)\n\nMC3_edge <- mc3_edges %>% \n  filter(source %in% mc3_nodes_topic1$id | target %in% mc3_nodes_topic1$id) %>% \n  rename(from = source) %>%\n  rename(to = target) \n\nid1 <- MC3_edge %>%\n  select(from) %>%\n  rename(id = from)\nid2 <- MC3_edge %>%\n  select(to) %>%\n  rename(id = to)\n\nmc3_node <- rbind(id1, id2) %>%\n  distinct() %>% \n  left_join(mc3_nodes_topic1, by = 'id')\n\nMC3_graph <- tbl_graph(nodes = mc3_node,\n                       edges = MC3_edge,\n                       directed =FALSE)%>%\n  mutate(betweenness_centrality = centrality_betweenness())\n\n\nIf filter by high betweenness centrality, can see that company features are equipment and service only.\n\n\nShow the code\nMC3_graph %>%\n  filter(betweenness_centrality >= 2000) %>%\nggraph(layout = \"fr\")+\n  geom_edge_link(aes(width = weights), alpha = 0.50, edge_color = \"grey20\") +\n  geom_node_point(color = \"gray\", size = 20, show.legend = FALSE) +\n  geom_node_text(aes(label = word),  colour = 'black', size=5,show.legend = FALSE)"
+  },
+  {
+    "objectID": "Take-home_Ex/Take-home_Ex03/Take-home_Ex03.html#topic-2",
+    "href": "Take-home_Ex/Take-home_Ex03/Take-home_Ex03.html#topic-2",
+    "title": "Take Home Exercise 3",
+    "section": "Topic 2",
+    "text": "Topic 2\n\n\nShow the code\nmc3_nodes_topic2 <- mc3_nodes_topic %>% \n  filter(topic ==2)\n\nMC3_edge <- mc3_edges %>% \n  filter(source %in% mc3_nodes_topic$id | target %in% mc3_nodes_topic1$id) %>% \n  rename(from = source) %>%\n  rename(to = target) \n\nid1 <- MC3_edge %>%\n  select(from) %>%\n  rename(id = from)\nid2 <- MC3_edge %>%\n  select(to) %>%\n  rename(id = to)\n\nmc3_node <- rbind(id1, id2) %>%\n  distinct() %>% \n  left_join(mc3_nodes_topic2, by = 'id')\n\nMC3_graph <- tbl_graph(nodes = mc3_node,\n                       edges = MC3_edge,\n                       directed =FALSE)%>%\n  mutate(betweenness_centrality = centrality_betweenness(),\n         closeness_centrality = centrality_closeness())\n\n\nWe can see that some company features with high betweenness centrality look abnormal, including unrelated features to fishing such as shoe and glove.\n\n\nShow the code\nMC3_graph %>%\n  filter(betweenness_centrality >= 100000) %>%\nggraph(layout = \"fr\")+\n  geom_edge_link(aes(width = weights), alpha = 0.50, edge_color = \"grey20\") +\n  geom_node_point(color = \"gray\", size = 10, show.legend = FALSE) +\n  geom_node_text(aes(label = word),  colour = 'black', size=4,show.legend = FALSE)"
+  },
+  {
+    "objectID": "Take-home_Ex/Take-home_Ex03/Take-home_Ex03.html#topic-3",
+    "href": "Take-home_Ex/Take-home_Ex03/Take-home_Ex03.html#topic-3",
+    "title": "Take Home Exercise 3",
+    "section": "Topic 3",
+    "text": "Topic 3\n\n\nShow the code\nmc3_nodes_topic3 <- mc3_nodes_topic %>% \n  filter(topic ==3)\n\nMC3_edge <- mc3_edges %>% \n  filter(source %in% mc3_nodes_topic3$id | target %in% mc3_nodes_topic1$id) %>% \n  rename(from = source) %>%\n  rename(to = target) \n\nid1 <- MC3_edge %>%\n  select(from) %>%\n  rename(id = from)\nid2 <- MC3_edge %>%\n  select(to) %>%\n  rename(id = to)\n\nmc3_node <- rbind(id1, id2) %>%\n  distinct() %>% \n  left_join(mc3_nodes_topic3, by = 'id')\n\nMC3_graph <- tbl_graph(nodes = mc3_node,\n                       edges = MC3_edge,\n                       directed =FALSE)%>%\n  mutate(betweenness_centrality = centrality_betweenness(),\n         closeness_centrality = centrality_closeness())\n\n\nFor nodes with high betweenness centrality in topic 3, it is expected to see a majority of them being related to frozen/seafood and fish. However, there are some companies with unrelated features such as pharmaceutical and metal that have unexpectedly high betweenness centrality.\n\n\nShow the code\nMC3_graph %>%\n  filter(betweenness_centrality >= 5000) %>%\nggraph(layout = \"fr\")+\n  geom_edge_link(aes(width = weights), alpha = 0.50, edge_color = \"grey20\") +\n  geom_node_point(color = \"gray\", size = 10, show.legend = FALSE) +\n  geom_node_text(aes(label = word),  colour = 'black', size=4,show.legend = FALSE)"
   }
 ]
